@@ -1,4 +1,4 @@
-# SecureVault
+# MnemoKot
 
 Безопасный менеджер паролей для Android с многоуровневой защитой и уникальными функциями.
 
@@ -98,4 +98,4 @@ MIT License
 
 ## Автор
 
-SecureVault Team
+Mnemokot Team
