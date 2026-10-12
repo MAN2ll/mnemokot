@@ -20,24 +20,26 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # 1. Сначала настраиваем встроенную консольную утилиту Gradle
     - name: Setup Gradle Build Action
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.6'
 
-    # 2. Генерируем недостающий файл gradlew в корень проекта, используя версию 8.6
     - name: Generate Missing Gradle Wrapper
       run: gradle wrapper --gradle-version 8.6
 
-    # 3. Даем права на исполнение только что созданному локальному файлу
     - name: Change wrapper permissions
       run: chmod +x gradlew
 
-    # 4. Запускаем чистую сборку нашего приложения через локальную обертку
     - name: Build App with Gradle Wrapper
       run: ./gradlew assembleDebug
 
-    # 5. Запускаем Unit-тесты для модуля криптографии
     - name: Run Cryptography Unit Tests
       run: ./gradlew test
+
+    # ФИНАЛЬНЫЙ ШАГ: Выгружаем готовый APK, чтобы его можно было скачать
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mnemokot-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
