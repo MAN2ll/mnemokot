@@ -22,5 +22,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "MnemoKot"
 
-// Подключаем криптографический модуль
+// Подключаем все изолированные модули ядра
 include(":core:crypto")
+include(":core:database")
+include(":core:security")
