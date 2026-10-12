@@ -2,6 +2,7 @@ package ru.man2ll.mnemokot.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,48 +12,52 @@ import net.zetetic.database.sqlcipher.SupportFactory
 import ru.man2ll.mnemokot.core.database.data.AppDatabase
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
+import ru.man2ll.mnemokot.core.database.data.repository.MnemokotRepositoryImpl
+import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DatabaseModule {
+abstract class DatabaseModule {
 
-    private const val DATABASE_NAME = "mnemokot_secure.db"
-
-    @Provides
+    @Binds
     @Singleton
-    fun provideAppDatabase(
-        @ApplicationContext context: Context
-    ): AppDatabase {
-        // ВАЖНО: На этапе инициализации приложения здесь будет запрашиваться 
-        // ключ, полученный из мастер-пароля. Для компиляции каркаса мы закладываем 
-        // детерминированную фабрику шифрования SQLCipher.
-        // Очищаем passphrase из памяти сразу после использования (безопасность CharArray/ByteArray)
-        val passphrase = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toCharArray()
-        val factory = SupportFactory(SupportFactory.toCharArray(passphrase))
-        
-        // Очищаем массив символов из памяти ради безопасности
-        passphrase.fill(' ')
+    abstract fun bindMnemokotRepository(
+        repositoryImpl: MnemokotRepositoryImpl
+    ): MnemokotRepository
 
-        return Room.databaseBuilder(
-            context,
-            AppDatabase::class.java,
-            DATABASE_NAME
-        )
-        .openHelperFactory(factory) // Подключаем шифрование на уровне диска
-        .fallbackToDestructiveMigration() // Защита от падений при разработке схем данных
-        .build()
-    }
+    companion object {
+        private const val DATABASE_NAME = "mnemokot_secure.db"
 
-    @Provides
-    @Singleton
-    fun provideProfileDao(database: AppDatabase): ProfileDao {
-        return database.profileDao()
-    }
+        @Provides
+        @Singleton
+        fun provideAppDatabase(
+            @ApplicationContext context: Context
+        ): AppDatabase {
+            val passphrase = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toCharArray()
+            val factory = SupportFactory(SupportFactory.toCharArray(passphrase))
+            passphrase.fill(' ')
 
-    @Provides
-    @Singleton
-    fun provideAccountDao(database: AppDatabase): AccountDao {
-        return database.accountDao()
+            return Room.databaseBuilder(
+                context,
+                AppDatabase::class.java,
+                DATABASE_NAME
+            )
+            .openHelperFactory(factory)
+            .fallbackToDestructiveMigration()
+            .build()
+        }
+
+        @Provides
+        @Singleton
+        fun provideProfileDao(database: AppDatabase): ProfileDao {
+            return database.profileDao()
+        }
+
+        @Provides
+        @Singleton
+        fun provideAccountDao(database: AppDatabase): AccountDao {
+            return database.accountDao()
+        }
     }
 }
