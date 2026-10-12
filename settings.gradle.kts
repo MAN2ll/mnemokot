@@ -19,3 +19,8 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
+rootProject.name = "MnemoKot"
+
+// Подключаем криптографический модуль
+include(":core:crypto")
