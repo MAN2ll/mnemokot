@@ -35,21 +35,21 @@ abstract class DatabaseModule {
         fun provideAppDatabase(
             @ApplicationContext context: Context
         ): AppDatabase {
-            // Безопасный массив символов для ключа шифрования
-            val passphrase = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toCharArray()
+            // Переводим временный пароль в ByteArray, как того требует SQLCipher 4.5.4
+            val passphraseBytes = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toByteArray(Charsets.UTF_8)
             
-            // В версии 4.5.4 используется класс SupportOpenHelperFactory
-            val factory: SupportSQLiteOpenHelper.Factory = SupportOpenHelperFactory(passphrase)
+            // Инициализируем фабрику через массив байт
+            val factory: SupportSQLiteOpenHelper.Factory = SupportOpenHelperFactory(passphraseBytes)
             
-            // Незамедлительно затираем массив из памяти ради безопасности
-            passphrase.fill(' ')
+            // Незамедлительно затираем байты в оперативной памяти ради безопасности
+            passphraseBytes.fill(0)
 
             return Room.databaseBuilder(
                 context,
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-            .openHelperFactory(factory) // Подключаем полнодисковое AES-256 шифрование
+            .openHelperFactory(factory) // Включаем полнодисковое шифрование AES-256
             .fallbackToDestructiveMigration()
             .build()
         }
