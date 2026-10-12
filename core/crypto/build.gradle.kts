@@ -36,6 +36,6 @@ dependencies {
     // Security & Crypto
     implementation(libs.androidx.security.crypto)
 
-    // Testing
-    testImplementation(junit)
+    // Testing (Исправлено: теперь обращение идет строго через каталог libs)
+    testImplementation(libs.junit)
 }
