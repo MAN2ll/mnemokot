@@ -49,7 +49,7 @@ class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
         }
 
         // 3. Сборка сырого конвейера (Детерминированная склейка)
-        val rawPassword = "processedPhrase{options.serviceName}options.rotationDate{options.salt}"
+        val rawPassword = "${processedPhrase}${options.serviceName}${options.rotationDate}${options.salt}"
 
         // 4. Мутация символов (Leet-speak подстановки) и защита от повторов
         val finalPassword = StringBuilder()
