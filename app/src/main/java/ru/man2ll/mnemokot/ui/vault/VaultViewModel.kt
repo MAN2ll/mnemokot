@@ -23,8 +23,8 @@ class VaultViewModel @Inject constructor(
     private val _calculatedPassword = MutableStateFlow<String?>(null)
     val calculatedPassword: StateFlow<String?> = _calculatedPassword.asStateFlow()
 
-    // В учебных целях фиксируем id профиля как 1 (первый созданный профиль)
-    private val defaultProfileId = 1Long
+    // Исправлено: теперь используется строго корректный синтаксис суффикса Long в Kotlin
+    private val defaultProfileId = 1L
 
     init {
         loadAccounts()
@@ -68,7 +68,6 @@ class VaultViewModel @Inject constructor(
             val passChars = repository.getPasswordForAccount(accountId, phrase)
             if (passChars.isNotEmpty()) {
                 _calculatedPassword.value = String(passChars)
-                // Незамедлительно стираем массив символов из памяти ради безопасности
                 passChars.fill(' ')
             }
         }
