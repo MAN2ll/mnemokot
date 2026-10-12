@@ -24,7 +24,7 @@ android {
 }
 
 dependencies {
-    // Подключаем модули данных и криптографии фраз
+    // Подключаем соседние модули данных и криптографии фраз
     implementation(project(":core:database"))
     implementation(project(":core:crypto"))
 
@@ -35,7 +35,4 @@ dependencies {
 
     // Crypto & Security (Jetpack Security + встроенные примитивы Java)
     implementation(libs.androidx.security.crypto)
-    
-    // Для сериализации бэкапов в JSON
-    implementation("applicationId" to Any()) // Используем стандартный кодировщик Android/Java java.io или org.json
 }
