@@ -22,7 +22,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "MnemoKot"
 
-// Подключаем все изолированные модули ядра
+// Подключаем главный модуль приложения и модули ядра данных
+include(":app")
 include(":core:crypto")
 include(":core:database")
 include(":core:security")
