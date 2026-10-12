@@ -1,13 +1,11 @@
 package ru.man2ll.mnemokot.ui.vault
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -112,7 +110,11 @@ fun VaultScreen(viewModel: VaultViewModel) {
 @Composable
 fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), architecturalElement = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(), 
+            verticalAlignment = Alignment.CenterVertically, 
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Column {
                 Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(account.login, fontSize = 14.sp, color = Color.Gray)
@@ -134,10 +136,6 @@ fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick
     }
 }
 
-private fun Row(modifier: Modifier, architecturalElement: Alignment.Vertical, horizontalArrangement: Arrangement.HorizontalOrVertical, content: @Composable RowScope.() -> Unit) {
-    Row(modifier = modifier, verticalAlignment = architecturalElement, horizontalArrangement = horizontalArrangement, content = content)
-}
-
 @Composable
 fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, Int, String, String, String?) -> Unit) {
     var service by remember { mutableStateOf("") }
@@ -153,8 +151,8 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
         title = { Text("Новая учетная запись") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { OutlinedTextField(value = service, onValueChange = { service = it }, label = { Text("Название сервиса (например, Gmail)") }) }
-                item { OutlinedTextField(value = login, onValueChange = { login = it }, label = { Text("Логин / Email") }) }
+                item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Название сервиса (например, Gmail)") }) }
+                item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин / Email") }) }
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = isMnemonic, onCheckedChange = { isMnemonic = it })
@@ -162,11 +160,11 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
                     }
                 }
                 if (isMnemonic) {
-                    item { OutlinedTextField(value = length, onValueChange = { length = it }, label = { Text("Длина пароля (например, 16)") }) }
-                    item { OutlinedTextField(value = salt, onValueChange = { salt = it }, label = { Text("Своя соль (необязательно)") }) }
-                    item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, label = { Text("Дата ротации ММГГ (например, 1026)") }) }
+                    item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Длина пароля (например, 16)") }) }
+                    item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Своя соль (необязательно)") }) }
+                    item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Дата ротации ММГГ (например, 1026)") }) }
                 } else {
-                    item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, label = { Text("Введите явный пароль") }) }
+                    item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Введите явный пароль") }) }
                 }
             }
         },
