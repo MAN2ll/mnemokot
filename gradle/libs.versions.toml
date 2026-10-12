@@ -1,5 +1,5 @@
 [versions]
-agp = "8.4.2"
+agp = "8.2.2"
 kotlin = "1.9.24"
 ksp = "1.9.24-1.0.20"
 hilt = "2.51.1"
@@ -19,7 +19,6 @@ junit = "4.13.2"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 # Jetpack Compose UI
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -42,6 +41,9 @@ androidx-sqlite-ktx = { group = "androidx.sqlite", name = "sqlite-ktx", version.
 # Background Tasks & Security
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "crypto" }
+
+# Testing
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
