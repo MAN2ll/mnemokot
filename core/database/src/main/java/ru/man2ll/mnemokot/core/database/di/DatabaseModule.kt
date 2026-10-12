@@ -35,6 +35,10 @@ abstract class DatabaseModule {
         fun provideAppDatabase(
             @ApplicationContext context: Context
         ): AppDatabase {
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ДЛЯ ANDROID 7.0 - 9.0:
+            // Принудительно загружаем C++ ядро шифрования SQLCipher до старта Room
+            System.loadLibrary("sqlcipher")
+
             // Переводим временный пароль в ByteArray, как того требует SQLCipher 4.5.4
             val passphraseBytes = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toByteArray(Charsets.UTF_8)
             
