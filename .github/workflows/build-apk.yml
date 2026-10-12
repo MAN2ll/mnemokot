@@ -20,14 +20,24 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # Этот официальный шаг сам скачает Gradle 8.6 и создаст рабочий gradlew, если его нет
-    - name: Setup Gradle
+    # 1. Сначала настраиваем встроенную консольную утилиту Gradle
+    - name: Setup Gradle Build Action
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.6'
 
-    - name: Build with Gradle
+    # 2. Генерируем недостающий файл gradlew в корень проекта, используя версию 8.6
+    - name: Generate Missing Gradle Wrapper
+      run: gradle wrapper --gradle-version 8.6
+
+    # 3. Даем права на исполнение только что созданному локальному файлу
+    - name: Change wrapper permissions
+      run: chmod +x gradlew
+
+    # 4. Запускаем чистую сборку нашего приложения через локальную обертку
+    - name: Build App with Gradle Wrapper
       run: ./gradlew assembleDebug
 
-    - name: Run Unit Tests
+    # 5. Запускаем Unit-тесты для модуля криптографии
+    - name: Run Cryptography Unit Tests
       run: ./gradlew test
