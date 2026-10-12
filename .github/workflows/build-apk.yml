@@ -20,13 +20,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    # Этот официальный шаг сам скачает Gradle 8.6 и создаст рабочий gradlew, если его нет
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: wrapper
-
-    - name: Change wrapper permissions
-      run: chmod +x gradlew
+        gradle-version: '8.6'
 
     - name: Build with Gradle
       run: ./gradlew assembleDebug
