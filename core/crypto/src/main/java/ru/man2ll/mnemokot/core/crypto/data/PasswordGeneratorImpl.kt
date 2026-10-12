@@ -34,19 +34,20 @@ class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
         val charsPerWord = (targetWordsLength / words.size).coerceAtLeast(1)
         
         val processedPhrase = StringBuilder()
-        for ((index, word) in words.withIndex()) {
-            val transliterated = translit(word)
-            // Берем N символов от каждого слова для сохранения семантики корня
-            val truncated = if (transliterated.length > charsPerWord) {
-                transliterated.substring(0, charsPerWord)
-            } else {
-                transliterated
-            }
-            // Делаем первую букву каждого слова заглавной (CamelCase)
-            if (truncated.isNotEmpty()) {
-                processedPhrase.append(truncated.replaceFirstChar { it.uppercase() })
-            }
+        for (word in words) {
+        val transliterated = translit(word)
+        // Берем N символов от каждого слова для сохранения семантики корня
+        val truncated = if (transliterated.length > charsPerWord) {
+        transliterated.substring(0, charsPerWord)
+        } else {
+        transliterated
         }
+        
+    // Делаем первую букву каждого слова заглавной (CamelCase)
+    if (truncated.isNotEmpty()) {
+        processedPhrase.append(truncated.replaceFirstChar { it.uppercase() })
+    }
+}
 
         // 3. Сборка сырого конвейера (Детерминированная склейка)
         val rawPassword = "${processedPhrase}${options.serviceName}${options.rotationDate}${options.salt}"
