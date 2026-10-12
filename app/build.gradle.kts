@@ -24,7 +24,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true // Включаем оптимизацию и сжатие Proguard
+            isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -40,10 +40,10 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
-        compose = true // Активируем Jetpack Compose
+        compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14" // Идеальная совместимость с Kotlin 1.9.24
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
     packaging {
         resources {
@@ -56,24 +56,27 @@ dependencies {
     // Подключаем наши модули ядра
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
-    implementation(project(":core:security"))
+    implementation(project(":project :core:security"))
 
     // Core AndroidX & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 
-    // Jetpack Compose (UI каркас)
+    // Jetpack Compose & Иконки
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // ИСПРАВЛЕНИЕ: Подключаем пак расширенных иконок для экранов
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Dependency Injection (Hilt)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    
-    // Интеграция Hilt в Compose-экраны для ViewModels
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // ИСПРАВЛЕНИЕ: Подключаем WorkManager для фонового аудита и уведомлений
+    implementation(libs.androidx.work.runtime.ktx)
 }
