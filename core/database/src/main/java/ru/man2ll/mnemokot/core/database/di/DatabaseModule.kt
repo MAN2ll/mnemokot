@@ -2,13 +2,14 @@ package ru.man2ll.mnemokot.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import net.zetetic.support.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import ru.man2ll.mnemokot.core.database.data.AppDatabase
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
@@ -34,8 +35,13 @@ abstract class DatabaseModule {
         fun provideAppDatabase(
             @ApplicationContext context: Context
         ): AppDatabase {
+            // Безопасный массив символов для ключа шифрования
             val passphrase = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toCharArray()
-            val factory = SupportFactory(SupportFactory.toCharArray(passphrase))
+            
+            // В версии 4.5.4 используется класс SupportOpenHelperFactory
+            val factory: SupportSQLiteOpenHelper.Factory = SupportOpenHelperFactory(passphrase)
+            
+            // Незамедлительно затираем массив из памяти ради безопасности
             passphrase.fill(' ')
 
             return Room.databaseBuilder(
@@ -43,7 +49,7 @@ abstract class DatabaseModule {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-            .openHelperFactory(factory)
+            .openHelperFactory(factory) // Подключаем полнодисковое AES-256 шифрование
             .fallbackToDestructiveMigration()
             .build()
         }
