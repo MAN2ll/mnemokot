@@ -53,10 +53,10 @@ android {
 }
 
 dependencies {
-    // Подключаем наши модули ядра
+    // Подключаем наши изолированные модули ядра
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
-    implementation(project(":project :core:security"))
+    implementation(project(":core:security")) // Исправлено: убран дубликат слова project
 
     // Core AndroidX & Lifecycle
     implementation(libs.androidx.core.ktx)
@@ -69,7 +69,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    // ИСПРАВЛЕНИЕ: Подключаем пак расширенных иконок для экранов
     implementation(libs.androidx.compose.material.icons.extended)
 
     // Dependency Injection (Hilt)
@@ -77,6 +76,6 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    // ИСПРАВЛЕНИЕ: Подключаем WorkManager для фонового аудита и уведомлений
+    // WorkManager для фоновых задач
     implementation(libs.androidx.work.runtime.ktx)
 }
