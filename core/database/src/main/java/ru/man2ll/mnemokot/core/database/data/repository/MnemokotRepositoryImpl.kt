@@ -20,28 +20,27 @@ import javax.inject.Singleton
 class MnemokotRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val accountDao: AccountDao,
-    private val passwordGenerator: PasswordGenerator // Внедряем генератор из модуля :core:crypto
+    private val passwordGenerator: PasswordGenerator
 ) : MnemokotRepository {
 
     override fun getProfiles(): Flow<List<UserProfile>> {
         return profileDao.getAllProfilesFlow().map { list -> list.map { it.toDomain() } }
     }
 
-    override fun createProfile(name: String, pin: String?): Long {
-        // Упрощенный хэш для демонстрации каркаса архитектуры (в модуле :core:security заменим на PBKDF2)
+    override suspend fun createProfile(name: String, pin: String?): Long {
         val pinHash = pin?.hashCode()?.toString()
         val entity = UserProfileEntity(profileName = name, pinHash = pinHash)
         return profileDao.insertProfile(entity)
     }
 
-    override fun deleteProfile(id: Long) {
+    override suspend fun deleteProfile(id: Long) {
         val entity = profileDao.getProfileById(id)
         if (entity != null) {
             profileDao.deleteProfile(entity)
         }
     }
 
-    override fun verifyPin(profileId: Long, pin: String): Boolean {
+    override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
         val profile = profileDao.getProfileById(profileId) ?: return false
         if (profile.pinHash == null) return true
         return profile.pinHash == pin.hashCode().toString()
@@ -51,26 +50,25 @@ class MnemokotRepositoryImpl @Inject constructor(
         return accountDao.getAccountsByProfileFlow(profileId).map { list -> list.map { it.toDomain() } }
     }
 
-    override fun getAccountById(id: Long): Account? {
+    override suspend fun getAccountById(id: Long): Account? {
         return accountDao.getAccountById(id)?.toDomain()
     }
 
-    override fun saveAccount(account: Account) {
+    override suspend fun saveAccount(account: Account) {
         accountDao.insertAccount(account.toEntity())
     }
 
-    override fun deleteAccount(id: Long) {
+    override suspend fun deleteAccount(id: Long) {
         val entity = accountDao.getAccountById(id)
         if (entity != null) {
             accountDao.deleteAccount(entity)
         }
     }
 
-    override fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray {
+    override suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray {
         val account = accountDao.getAccountById(accountId) ?: return charArrayOf()
         
         return if (account.isMnemonic) {
-            // Если пароль мнемонический, генерируем его «на лету» по сохраненным метаданным
             if (mnemonicPhrase == null) return charArrayOf()
             
             val options = MnemonicOptions(
@@ -81,7 +79,6 @@ class MnemokotRepositoryImpl @Inject constructor(
             )
             passwordGenerator.generateFromMnemonic(mnemonicPhrase, options)
         } else {
-            // Если пароль ручной, отдаем расшифрованную строку (SQLCipher расшифрует её автоматически)
             account.encryptedPassword?.toCharArray() ?: charArrayOf()
         }
     }
