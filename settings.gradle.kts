@@ -19,10 +19,3 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-
-rootProject.name = "MnemoKot"
-
-// Подключение модулей архитектуры
-include(":app")
-include(":core:crypto")
-include(":core:database")
