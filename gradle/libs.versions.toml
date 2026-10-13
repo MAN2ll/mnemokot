@@ -7,6 +7,8 @@ coreKtx = "1.13.1"
 lifecycleRuntimeKtx = "2.8.2"
 activityCompose = "1.9.0"
 composeBom = "2024.06.00"
+composeCompiler = "1.5.14"
+navigationCompose = "2.7.7"
 room = "2.6.1"
 sqlcipher = "4.5.4"
 sqliteKtx = "2.4.0"
@@ -20,14 +22,14 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
-# Jetpack Compose UI
+# Jetpack Compose UI & Navigation
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-# ИСПРАВЛЕНИЕ: Добавляем расширенный пак иконок (лампочки, казино и т.д.)
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
 # Dependency Injection (Hilt)
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
