@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://android.com"
     xmlns:tools="http://android.com">
 
-    <!-- Запрашиваемые разрешения безопасности -->
+    <!-- Базовые разрешения приложения -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -11,7 +11,7 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
-    <!-- Локальные уведомления о ротации мастер-ключей и паролей -->
+    <!-- Уведомления о ротации паролей -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -40,7 +40,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Изолированный FileProvider для защищенного экспорта данных внутри песочницы -->
+        <!-- Безопасный FileProvider для шаринга QR-кодов внутри песочницы -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
