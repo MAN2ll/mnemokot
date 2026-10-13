@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.devtools.ksp)
+    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt.android)
 }
 
@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId = "ru.man2ll.mnemokot"
-        minSdk = 24
+        minSdk = 26 // Архитектурный переход приложения на Android 8.0+
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -24,8 +24,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -43,7 +42,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
+        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
     packaging {
         resources {
@@ -53,29 +52,29 @@ android {
 }
 
 dependencies {
-    // Подключаем наши изолированные модули ядра
+    // Безопасное подключение модулей Clean Architecture ядра MnemoKot
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
-    implementation(project(":core:security")) // Исправлено: убран дубликат слова project
+    implementation(project(":core:security"))
 
-    // Core AndroidX & Lifecycle
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-
-    // Jetpack Compose & Иконки
+    // Базовый стек Jetpack Compose UI
+    implementation(libs.androidx.core-ktx)
+    implementation(libs.androidx.lifecycle-runtime-ktx)
+    implementation(libs.androidx.activity-compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    
+    // Безопасная декларативная навигация
+    implementation(libs.androidx.navigation-compose)
 
-    // Dependency Injection (Hilt)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    // Внедрение зависимостей Dagger Hilt
+    implementation(libs.hilt-android)
+    kapt(libs.hilt.compiler)
 
-    // WorkManager для фоновых задач
-    implementation(libs.androidx.work.runtime.ktx)
+    // Тестирование
+    testImplementation(libs.junit)
 }
