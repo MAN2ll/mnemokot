@@ -1,10 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
-    // Подключаем Kotlin-плагины по их уникальному ID без ключевого слова alias.
-    // Это говорит GitHub использовать глобальную версию плагина, зафиксированную в корне проекта.
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
-    alias(libs.plugins.hilt.android) // Имя плагина строго соответствует твоему libs.versions.toml
+    alias(libs.plugins.hilt.android)
 }
 
 android {
@@ -13,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "ru.man2ll.mnemokot"
-        minSdk = 26 // Переход на поддержку Android 8.0+
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -54,14 +52,12 @@ android {
 }
 
 dependencies {
-    // Внутренние модули архитектуры MnemoKot
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
     implementation(project(":core:security"))
 
-    // Библиотеки Jetpack Compose UI
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.core-ktx)
+    implementation(libs.androidx.lifecycle-runtime-ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -70,13 +66,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     
-    // Навигация внутри Compose
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation-compose)
 
-    // Внедрение зависимостей Dagger Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
-    // Тестирование
     testImplementation(libs.junit)
 }
