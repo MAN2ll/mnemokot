@@ -1,3 +1,3 @@
 <resources>
-    <style name="Theme.SecureVault" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MnemoKot" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>
