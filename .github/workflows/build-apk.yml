@@ -1,4 +1,4 @@
-name: Android CI with Debug Logs
+name: Android CI
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Для запуска эмулятора Android на GitHub требуется виртуальная машина macOS с аппаратным ускорением
+    runs-on: ubuntu-latest # Сверхбыстрый и всегда доступный сервер
 
     steps:
     - name: Checkout repository
@@ -34,26 +34,11 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    # ЗАПУСК ЭМУЛЯТОРА ДЛЯ СБОРА РЕАЛЬНЫХ ЛОГОВ ПАДЕНИЯ
-    - name: Run Emulator and Collect Logs
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 27 # Android 8.1 (Именно ваша проблемная версия)
-        target: default
-        arch: x86_64
-        script: |
-          # Пытаемся установить приложение на устройство
-          adb install -r app/build/outputs/apk/debug/app-debug.apk || echo "INSTALL_FAILED" > install_error.txt
-          
-          # Захватываем первые 500 строк логов краша системы
-          adb logcat -d -v time *:E > android_debug_log.txt
+    - name: Run Cryptography Unit Tests
+      run: ./gradlew test
 
-    # ВЫГРУЗКА ГОТОВОГО APK И ТЕКСТОВОГО ФАЙЛА ЛОГОВ НА GITHUB
-    - name: Upload APK and Logs Artifacts
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: mnemokot-debug-package
-        path: |
-          app/build/outputs/apk/debug/app-debug.apk
-          android_debug_log.txt
-          install_error.txt
+        name: mnemokot-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
