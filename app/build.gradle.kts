@@ -52,13 +52,17 @@ android {
 }
 
 dependencies {
+    // Архитектурные модули ядра MnemoKot
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
     implementation(project(":core:security"))
 
-    implementation(libs.androidx.core-ktx)
-    implementation(libs.androidx.lifecycle-runtime-ktx)
+    // Базовые библиотеки AndroidX (исправлен синтаксис точек вместо минусов)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    
+    // UI Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -66,10 +70,13 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     
-    implementation(libs.androidx.navigation-compose)
+    // Навигация Compose
+    implementation(libs.androidx.navigation.compose)
 
+    // Внедрение зависимостей Dagger Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
+    // Тестирование
     testImplementation(libs.junit)
 }
