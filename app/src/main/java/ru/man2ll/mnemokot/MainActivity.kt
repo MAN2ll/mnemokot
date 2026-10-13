@@ -8,6 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,8 +37,6 @@ import java.io.StringWriter
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     
-    // Используем lazy-инициализацию, чтобы краш при сборке Hilt-графа 
-    // не выбивал саму Activity до запуска блока try-catch
     private val authViewModel: AuthViewModel by lazy { viewModels<AuthViewModel>().value }
     private val vaultViewModel: VaultViewModel by lazy { viewModels<VaultViewModel>().value }
     private val auditViewModel: AuditViewModel by lazy { viewModels<AuditViewModel>().value }
@@ -68,7 +70,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } catch (t: Throwable) {
-            // ЕСЛИ ПРИЛОЖЕНИЕ ПАДАЕТ, ОНО ПОКАЖЕТ КРАСНЫЙ ЭКРАН С ЛОГОМ ОШИБКИ ПРЯМО НА СМАРТФОНЕ
             showCrashScreen(t)
         }
     }
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF8B0000)) // Темно-красный фон краша
+                    .background(Color(0xFF8B0000))
                     .padding(16.dp),
                 contentAlignment = Alignment.TopStart
             ) {
@@ -98,6 +99,48 @@ class MainActivity : ComponentActivity() {
                         fontFamily = FontFamily.Monospace
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun MainNavigationContainer(
+    vaultViewModel: VaultViewModel,
+    auditViewModel: AuditViewModel,
+    backupViewModel: BackupViewModel
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Lock, contentDescription = "Журнал") },
+                    label = { Text("Журнал") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Shield, contentDescription = "Аудит") },
+                    label = { Text("Аудит") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.Save, contentDescription = "Резерв") },
+                    label = { Text("Резерв") }
+                )
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            when (selectedTab) {
+                0 -> VaultScreen(viewModel = vaultViewModel)
+                1 -> AuditScreen(viewModel = auditViewModel)
+                2 -> BackupScreen(viewModel = backupViewModel)
             }
         }
     }
