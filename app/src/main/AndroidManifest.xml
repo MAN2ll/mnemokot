@@ -16,7 +16,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- Главная инструкция tools:node="replace" заставит сборщик перетереть любые старые темы из модулей core -->
     <application
         android:name=".MnemoKotApp"
         android:allowBackup="false"
@@ -26,8 +25,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MnemoKot"
-        tools:targetApi="31"
-        tools:node="replace">
+        tools:targetApi="31">
 
         <activity
             android:name=".MainActivity"
