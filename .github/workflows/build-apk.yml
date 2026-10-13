@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13 # Для запуска эмулятора Android на GitHub требуется виртуальная машина macOS с аппаратным ускорением
+    runs-on: macos-latest # Для запуска эмулятора Android на GitHub требуется виртуальная машина macOS с аппаратным ускорением
 
     steps:
     - name: Checkout repository
