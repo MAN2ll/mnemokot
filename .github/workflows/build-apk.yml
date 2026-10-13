@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Сверхбыстрый и всегда доступный сервер
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
@@ -24,13 +24,10 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.6'
+        cache-read-only: false
 
-    - name: Generate Missing Gradle Wrapper
-      run: gradle wrapper --gradle-version 8.6
-
-    - name: Change wrapper permissions
-      run: chmod +x gradlew
-
+    # Мы удалили шаги генерации wrapper и chmod, так как GitHub Actions
+    # нативно использует существующий в проекте gradlew с правильными правами.
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
