@@ -7,12 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.core.security.backup.BackupManager
 import javax.inject.Inject
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    private val backupManager: BackupManager
+    private val backupManager: BackupManager,
+    private val sessionManager: SessionManager // Внедряем менеджер сессии
 ) : ViewModel() {
 
     private val _backupPayload = MutableStateFlow<String?>(null)
@@ -21,13 +23,13 @@ class BackupViewModel @Inject constructor(
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
-    private val defaultProfileId = 1L
-
     fun exportData(password: String) {
+        val profileId = sessionManager.activeProfileId.value ?: return
         if (password.isBlank()) return
+        
         viewModelScope.launch {
             val passChars = password.toCharArray()
-            val payload = backupManager.exportBackupV3(defaultProfileId, passChars)
+            val payload = backupManager.exportBackupV3(profileId, passChars)
             passChars.fill(' ')
             _backupPayload.value = payload
             _statusMessage.value = "Экспорт бэкапа v3 успешно выполнен!"
@@ -35,10 +37,12 @@ class BackupViewModel @Inject constructor(
     }
 
     fun importData(payload: String, password: String) {
+        val profileId = sessionManager.activeProfileId.value ?: return
         if (payload.isBlank() || password.isBlank()) return
+        
         viewModelScope.launch {
             val passChars = password.toCharArray()
-            val success = backupManager.importBackupV3(defaultProfileId, payload, passChars)
+            val success = backupManager.importBackupV3(profileId, payload, passChars)
             passChars.fill(' ')
             if (success) {
                 _statusMessage.value = "Импорт данных успешно завершен! Новые записи добавлены."
