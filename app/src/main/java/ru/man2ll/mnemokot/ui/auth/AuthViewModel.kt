@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
@@ -73,6 +74,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun cancelCreateProfile() {
+        sessionManager.logout()
         observeProfiles()
     }
 
@@ -107,11 +109,12 @@ class AuthViewModel @Inject constructor(
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val enteredPinChars = _pinInput.value.toCharArray()
+            // ИСПРАВЛЕНИЕ: Добавлен вызов .first() для распаковки Flow перед фильтрацией списка
             val profiles = repository.getProfiles().first()
             val activeProfile = profiles.firstOrNull { it.id == profileId }
 
             if (activeProfile != null) {
-                val isValid = repository.verifyPin(profileId, cryptoEngine.hashPin(enteredPinChars)) // Логика верификации PBKDF2
+                val isValid = repository.verifyPin(profileId, cryptoEngine.hashPin(enteredPinChars))
                 enteredPinChars.fill(' ')
 
                 if (isValid) {
