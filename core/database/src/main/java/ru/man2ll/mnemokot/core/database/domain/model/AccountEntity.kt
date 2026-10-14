@@ -12,7 +12,7 @@ import androidx.room.PrimaryKey
             entity = UserProfileEntity::class,
             parentColumns = ["id"],
             childColumns = ["profileId"],
-            onDelete = ForeignKey.CASCADE // Если профиль удален, удаляются все его пароли
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index(value = ["profileId"])]
@@ -20,19 +20,15 @@ import androidx.room.PrimaryKey
 data class AccountEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val profileId: Long,          // Привязка к конкретному профилю
-    val serviceName: String,       // Например, "Gmail"
-    val login: String,             // Логин пользователя
-    
-    // Параметры генератора паролей AMPG v2
-    val isMnemonic: Boolean,       // Создан по фразе или вручную/случайно
+    val profileId: Long,
+    val serviceName: String,
+    val login: String,
+    val isMnemonic: Boolean,
     val passwordLength: Int = 16,
     val salt: String = "",
-    val rotationDate: String = "", // Зафиксированная дата ротации (например, "1026")
-    
-    // Хранение явного пароля (если введен вручную или сгенерирован случайно)
-    // Будет зашифрован внутри БД через SQLCipher, но для надежности оставим поле nullable
+    val rotationDate: String = "",
     val encryptedPassword: String? = null,
-    
+    // Новое поле для поддержки режима двух пользователей AMPG v2
+    val isDualUserMode: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis()
 )
