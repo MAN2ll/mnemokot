@@ -8,6 +8,8 @@ data class UserProfileEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val profileName: String,
-    val pinHash: String?, // Хэш PIN-кода (если задан пользователем)
+    val pinHash: String?,
+    val failedAttempts: Int = 0,         // Счетчик неудачных вводов PIN
+    val maxAttemptsBeforeDelete: Int = 5, // N попыток до полного уничтожения
     val createdAt: Long = System.currentTimeMillis()
 )

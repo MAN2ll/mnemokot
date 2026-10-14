@@ -28,8 +28,7 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createProfile(name: String, pin: String?): Long {
-        val pinHash = pin?.hashCode()?.toString()
-        val entity = UserProfileEntity(profileName = name, pinHash = pinHash)
+        val entity = UserProfileEntity(profileName = name, pinHash = pin)
         return profileDao.insertProfile(entity)
     }
 
@@ -41,9 +40,30 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
+        // Логика хеширования вынесена на уровень AuthViewModel/CryptoEngine
         val profile = profileDao.getProfileById(profileId) ?: return false
-        if (profile.pinHash == null) return true
-        return profile.pinHash == pin.hashCode().toString()
+        return profile.pinHash == pin
+    }
+
+    override suspend fun incrementFailedAttempts(profileId: Long): Int {
+        profileDao.incrementFailedAttempts(profileId)
+        val profile = profileDao.getProfileById(profileId) ?: return 0
+        
+        // Самоликвидация (Self-Destruct) при достижении лимита
+        if (profile.failedAttempts >= profile.maxAttemptsBeforeDelete) {
+            profileDao.deleteProfile(profile)
+            return -1 // Флаг того, что профиль уничтожен
+        }
+        return profile.failedAttempts
+    }
+
+    override suspend fun resetFailedAttempts(profileId: Long) {
+        profileDao.resetFailedAttempts(profileId)
+    }
+
+    override suspend fun getRemainingAttempts(profileId: Long): Int {
+        val profile = profileDao.getProfileById(profileId) ?: return 0
+        return (profile.maxAttemptsBeforeDelete - profile.failedAttempts).coerceAtLeast(0)
     }
 
     override fun getAccounts(profileId: Long): Flow<List<Account>> {
@@ -67,10 +87,8 @@ class MnemokotRepositoryImpl @Inject constructor(
 
     override suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray {
         val account = accountDao.getAccountById(accountId) ?: return charArrayOf()
-        
         return if (account.isMnemonic) {
             if (mnemonicPhrase == null) return charArrayOf()
-            
             val options = MnemonicOptions(
                 length = account.passwordLength,
                 salt = account.salt,

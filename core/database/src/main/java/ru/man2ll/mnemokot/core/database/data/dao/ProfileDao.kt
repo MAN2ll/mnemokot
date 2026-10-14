@@ -20,4 +20,11 @@ interface ProfileDao {
 
     @Delete
     suspend fun deleteProfile(profile: UserProfileEntity)
+
+    // Новые запросы для Brute-force защиты
+    @Query("UPDATE user_profiles SET failedAttempts = failedAttempts + 1 WHERE id = :profileId")
+    suspend fun incrementFailedAttempts(profileId: Long)
+
+    @Query("UPDATE user_profiles SET failedAttempts = 0 WHERE id = :profileId")
+    suspend fun resetFailedAttempts(profileId: Long)
 }

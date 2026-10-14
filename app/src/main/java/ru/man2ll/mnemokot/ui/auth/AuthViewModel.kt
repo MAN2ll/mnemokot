@@ -6,23 +6,27 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
+import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import javax.inject.Inject
 
 sealed interface AuthUiState {
     data object Loading : AuthUiState
+    data class ProfileSelection(val profiles: List<UserProfile>) : AuthUiState
     data object CreateProfile : AuthUiState
-    data class EnterPin(val profileName: String) : AuthUiState
-    data object Authenticated : AuthUiState
+    data class EnterPin(val profileName: String, val remainingAttempts: Int) : AuthUiState
 }
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val cryptoEngine: SecurityCryptoEngine
+    private val cryptoEngine: SecurityCryptoEngine,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Loading)
@@ -34,82 +38,99 @@ class AuthViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private var currentProfileId: Long? = null
-    private var storedPinHash: String? = null
-
     init {
-        checkProfiles()
+        observeProfiles()
     }
 
-    private fun checkProfiles() {
+    private fun observeProfiles() {
         viewModelScope.launch {
-            val profiles = repository.getProfiles().first()
-            if (profiles.isEmpty()) {
-                _uiState.value = AuthUiState.CreateProfile
-            } else {
-                val defaultProfile = profiles.first()
-                currentProfileId = defaultProfile.id
-                // Для проверки вытаскиваем хэш напрямую из базы данных
-                val dbProfile = repository.getProfiles().first().first()
-                _uiState.value = AuthUiState.EnterPin(defaultProfile.profileName)
+            repository.getProfiles().collectLatest { profiles ->
+                val activeId = sessionManager.activeProfileId.value
+                if (profiles.isEmpty()) {
+                    _uiState.value = AuthUiState.CreateProfile
+                } else if (activeId == null) {
+                    _uiState.value = AuthUiState.ProfileSelection(profiles)
+                } else {
+                    val activeProfile = profiles.firstOrNull { it.id == activeId }
+                    if (activeProfile != null) {
+                        val remaining = repository.getRemainingAttempts(activeId)
+                        _uiState.value = AuthUiState.EnterPin(activeProfile.profileName, remaining)
+                    } else {
+                        _uiState.value = AuthUiState.ProfileSelection(profiles)
+                    }
+                }
             }
         }
     }
 
+    fun onSelectProfile(profile: UserProfile) {
+        _pinInput.value = ""
+        _errorMessage.value = null
+        sessionManager.selectProfile(profile.id)
+    }
+
+    fun navigateToCreateProfile() {
+        _uiState.value = AuthUiState.CreateProfile
+    }
+
+    fun cancelCreateProfile() {
+        sessionManager.logout()
+        observeProfiles()
+    }
+
     fun onCreateProfile(name: String, pin: String) {
         if (name.isBlank() || pin.length < 4) {
-            _errorMessage.value = "Имя не может быть пустым, а PIN должен быть от 4 цифр"
+            _errorMessage.value = "Заполните имя и PIN (мин. 4 цифры)"
             return
         }
         viewModelScope.launch {
             val pinChars = pin.toCharArray()
             val securedHash = cryptoEngine.hashPin(pinChars)
-            pinChars.fill(' ') // Стираем пароль из памяти
-
-            // Костыли с hashCode убраны, теперь репозиторий примет чистый хэш PBKDF2
-            repository.createProfile(name, securedHash)
-            checkProfiles()
+            pinChars.fill(' ')
+            val newId = repository.createProfile(name, securedHash)
+            sessionManager.selectProfile(newId)
         }
     }
 
     fun onPinKeyClick(key: String) {
         _errorMessage.value = null
         if (key == "C") {
-            if (_pinInput.value.isNotEmpty()) {
-                _pinInput.value = _pinInput.value.dropLast(1)
-            }
+            if (_pinInput.value.isNotEmpty()) _pinInput.value = _pinInput.value.dropLast(1)
         } else {
-            if (_pinInput.value.length < 6) {
-                _pinInput.value += key
-            }
+            if (_pinInput.value.length < 6) _pinInput.value += key
         }
 
-        // Автоматическая проверка, если введено 4 или более символов (например, стандартный PIN-4)
         if (_pinInput.value.length >= 4) {
-            verifyEnteredPin()
+            verifyPin()
         }
     }
 
-    private fun verifyEnteredPin() {
-        val profileId = currentProfileId ?: return
+    private fun verifyPin() {
+        val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val enteredPinChars = _pinInput.value.toCharArray()
-            
-            // Запрашиваем данные профиля через репозиторий для сверки PBKDF2 хэша
+            // ИСПРАВЛЕНИЕ: Добавлен вызов .first() для распаковки Flow перед фильтрацией списка
             val profiles = repository.getProfiles().first()
-            val currentProfile = profiles.firstOrNull { it.id == profileId }
-            
-            if (currentProfile != null) {
-                // Временно верифицируем через криптодвижок
-                val isValid = cryptoEngine.verifyPin(enteredPinChars, cryptoEngine.hashPin(enteredPinChars)) 
-                
-                enteredPinChars.fill(' ') // Стираем из памяти
-                
+            val activeProfile = profiles.firstOrNull { it.id == profileId }
+
+            if (activeProfile != null) {
+                val isValid = repository.verifyPin(profileId, cryptoEngine.hashPin(enteredPinChars))
+                enteredPinChars.fill(' ')
+
                 if (isValid) {
-                    _uiState.value = AuthUiState.Authenticated
+                    repository.resetFailedAttempts(profileId)
+                    _pinInput.value = ""
+                    sessionManager.authorizeSuccess()
                 } else {
                     _pinInput.value = ""
-                    _errorMessage.value = "Неверный PIN-код"
+                    val result = repository.incrementFailedAttempts(profileId)
+                    if (result == -1) {
+                        sessionManager.logout()
+                        _errorMessage.value = "Профиль уничтожен из-за брутфорса!"
+                    } else {
+                        val remaining = repository.getRemainingAttempts(profileId)
+                        _errorMessage.value = "Неверный PIN. Осталось попыток: $remaining"
+                    }
                 }
             }
         }
