@@ -10,13 +10,16 @@ interface MnemokotRepository {
     suspend fun createProfile(name: String, pin: String?): Long
     suspend fun deleteProfile(id: Long)
     suspend fun verifyPin(profileId: Long, pin: String): Boolean
+    
+    // Новые методы Brute-force защиты
+    suspend fun incrementFailedAttempts(profileId: Long): Int
+    suspend fun resetFailedAttempts(profileId: Long)
+    suspend fun getRemainingAttempts(profileId: Long): Int
 
     // Операции с аккаунтами
     fun getAccounts(profileId: Long): Flow<List<Account>>
     suspend fun getAccountById(id: Long): Account?
     suspend fun saveAccount(account: Account)
     suspend fun deleteAccount(id: Long)
-    
-    // Ключевой метод: получить готовый пароль (сгенерировать на лету или расшифровать)
     suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray
 }
