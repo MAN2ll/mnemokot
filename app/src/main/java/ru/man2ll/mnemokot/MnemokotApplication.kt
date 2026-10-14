@@ -4,7 +4,7 @@ import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class MnemokotApplication : Application() {
+class MnemoKotApp : Application() {
     
     // СТАТИЧЕСКИЙ БЛОК: Загружается самым первым при старте процесса ОС Android
     init {
