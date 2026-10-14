@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -45,10 +46,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // МЕХАНИЗМ АВТОБЛОКИРОВКИ ПРИ СВЕРНУТОМ ПРИЛОЖЕНИИ
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
-                sessionManager.lockSession() // Сворачивание приложения мгновенно закрывает сейф
+                sessionManager.lockSession()
             }
         })
 
@@ -103,7 +103,6 @@ fun MainNavigationDrawerContainer(
                 )
                 HorizontalDivider()
                 
-                // Вкладка Журнала Паролей
                 NavigationDrawerItem(
                     label = { Text("Журнал паролей") },
                     selected = selectedTab == 0,
@@ -112,7 +111,6 @@ fun MainNavigationDrawerContainer(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Вкладка Аудита Безопасности
                 NavigationDrawerItem(
                     label = { Text("Аудит безопасности") },
                     selected = selectedTab == 1,
@@ -121,7 +119,6 @@ fun MainNavigationDrawerContainer(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Вкладка Резервного копирования
                 NavigationDrawerItem(
                     label = { Text("Резервное копирование") },
                     selected = selectedTab == 2,
@@ -133,7 +130,6 @@ fun MainNavigationDrawerContainer(
                 Spacer(modifier = Modifier.weight(1f))
                 HorizontalDivider()
                 
-                // Кнопка выхода из профиля (Назад к списку)
                 NavigationDrawerItem(
                     label = { Text("Сменить профиль / Выйти") },
                     selected = false,
