@@ -43,12 +43,13 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    fun onAddAccount(service: String, login: String, isMnemonic: Boolean, len: Int, salt: String, date: String, explicit: String?) {
+    fun onAddAccount(service: String, login: String, isMnemonic: Boolean, len: Int, salt: String, date: String, explicit: String?, isDual: Boolean) {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val account = Account(
                 id = 0, profileId = profileId, serviceName = service, login = login,
-                isMnemonic = isMnemonic, passwordLength = len, salt = salt, rotationDate = date, explicitPassword = explicit
+                isMnemonic = isMnemonic, passwordLength = len, salt = salt, rotationDate = date, 
+                explicitPassword = explicit, isDualUserMode = isDual // Передаем флаг в репозиторий
             )
             repository.saveAccount(account)
         }

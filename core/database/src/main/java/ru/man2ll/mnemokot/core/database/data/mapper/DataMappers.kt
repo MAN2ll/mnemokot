@@ -8,7 +8,9 @@ import ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity
 fun UserProfileEntity.toDomain() = UserProfile(
     id = id,
     profileName = profileName,
-    hasPin = pinHash != null
+    hasPin = pinHash != null,
+    failedAttempts = failedAttempts,
+    maxAttemptsBeforeDelete = maxAttemptsBeforeDelete
 )
 
 fun AccountEntity.toDomain() = Account(
@@ -20,7 +22,8 @@ fun AccountEntity.toDomain() = Account(
     passwordLength = passwordLength,
     salt = salt,
     rotationDate = rotationDate,
-    explicitPassword = encryptedPassword
+    explicitPassword = encryptedPassword,
+    isDualUserMode = isDualUserMode
 )
 
 fun Account.toEntity() = AccountEntity(
@@ -32,5 +35,6 @@ fun Account.toEntity() = AccountEntity(
     passwordLength = passwordLength,
     salt = salt,
     rotationDate = rotationDate,
-    encryptedPassword = explicitPassword
+    encryptedPassword = explicitPassword,
+    isDualUserMode = isDualUserMode
 )

@@ -16,8 +16,17 @@ fun BackupScreen(viewModel: BackupViewModel) {
     var passwordInput by remember { mutableStateOf("") }
     var importPayloadInput by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Резервное копирование v3", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Резервное копирование v3", 
+            fontSize = 22.sp, 
+            fontWeight = FontWeight.Bold, 
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
@@ -29,10 +38,11 @@ fun BackupScreen(viewModel: BackupViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { viewModel.exportData(passwordInput) }, modifier = Modifier.weight(1f)) {
-                Text("Экспорт данных")
-            }
+        Button(
+            onClick = { viewModel.exportData(passwordInput) }, 
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Экспорт данных активного профиля")
         }
 
         statusMessage?.let {
@@ -42,16 +52,26 @@ fun BackupScreen(viewModel: BackupViewModel) {
 
         backupPayload?.let {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Код вашей зашифрованной копии (AES-256-GCM):", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-            OutlinedTextField(value = it, onValueChange = {}, modifier = Modifier.fillMaxWidth().height(100.dp), readOnly = true)
+            Text(
+                text = "Код вашей зашифрованной копии (AES-256-GCM):", 
+                fontSize = 12.sp, 
+                color = MaterialTheme.colorScheme.secondary
+            )
+            OutlinedTextField(
+                value = it, 
+                onValueChange = {}, 
+                modifier = Modifier.fillMaxWidth().height(100.dp), 
+                readOnly = true
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-        Divider()
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(16.dp))
 
         Text("Импорт резервной копии", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
+        
         OutlinedTextField(
             value = importPayloadInput,
             onValueChange = { importPayloadInput = it },
@@ -59,8 +79,12 @@ fun BackupScreen(viewModel: BackupViewModel) {
             label = { Text("Вставьте зашифрованный код бэкапа") }
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = { viewModel.importData(importPayloadInput, passwordInput) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Запустить импорт")
+        
+        Button(
+            onClick = { viewModel.importData(importPayloadInput, passwordInput) }, 
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Запустить импорт в текущий профиль")
         }
     }
 }

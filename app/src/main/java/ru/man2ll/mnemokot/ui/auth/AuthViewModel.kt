@@ -85,7 +85,8 @@ class AuthViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val pinChars = pin.toCharArray()
-            val securedHash = cryptoEngine.hashPin(pinChars)
+            val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
+            val securedHash = cryptoEngine.hashPin(pinChars, staticSalt)
             pinChars.fill(' ')
             val newId = repository.createProfile(name, securedHash)
             sessionManager.selectProfile(newId)
@@ -109,13 +110,15 @@ class AuthViewModel @Inject constructor(
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val enteredPinChars = _pinInput.value.toCharArray()
-            // ИСПРАВЛЕНИЕ: Добавлен вызов .first() для распаковки Flow перед фильтрацией списка
             val profiles = repository.getProfiles().first()
             val activeProfile = profiles.firstOrNull { it.id == profileId }
 
             if (activeProfile != null) {
-                val isValid = repository.verifyPin(profileId, cryptoEngine.hashPin(enteredPinChars))
+                val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
+                val testHash = cryptoEngine.hashPin(enteredPinChars, staticSalt)
                 enteredPinChars.fill(' ')
+
+                val isValid = repository.verifyPin(profileId, testHash)
 
                 if (isValid) {
                     repository.resetFailedAttempts(profileId)

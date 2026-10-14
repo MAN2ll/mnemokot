@@ -40,7 +40,6 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
-        // Логика хеширования вынесена на уровень AuthViewModel/CryptoEngine
         val profile = profileDao.getProfileById(profileId) ?: return false
         return profile.pinHash == pin
     }
@@ -49,10 +48,9 @@ class MnemokotRepositoryImpl @Inject constructor(
         profileDao.incrementFailedAttempts(profileId)
         val profile = profileDao.getProfileById(profileId) ?: return 0
         
-        // Самоликвидация (Self-Destruct) при достижении лимита
         if (profile.failedAttempts >= profile.maxAttemptsBeforeDelete) {
             profileDao.deleteProfile(profile)
-            return -1 // Флаг того, что профиль уничтожен
+            return -1
         }
         return profile.failedAttempts
     }
@@ -93,7 +91,8 @@ class MnemokotRepositoryImpl @Inject constructor(
                 length = account.passwordLength,
                 salt = account.salt,
                 serviceName = account.serviceName,
-                rotationDate = account.rotationDate
+                rotationDate = account.rotationDate,
+                isDualUserMode = account.isDualUserMode
             )
             passwordGenerator.generateFromMnemonic(mnemonicPhrase, options)
         } else {

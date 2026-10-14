@@ -4,112 +4,124 @@ import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
 import java.security.MessageDigest
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
 
-    // Таблица транслитерации ГОСТ 7.79-2000 (Система Б)
-    // Поддерживает русский, украинский и белорусский языки
+    // ГОСТ 7.79-2000 (Система Б) жесткие таблицы подстановок кириллицы
     private val gostTable = mapOf(
-        'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d", 'е' to "e", 'ё' to "yo",
-        'ж' to "zh", 'з' to "z", 'и' to "i", 'й' to "j", 'к' to "k", 'л' to "l", 'м' to "m",
-        'н' to "n", 'о' to "o", 'п' to "p", 'р' to "r", 'с' to "s", 'т' to "t", 'у' to "u",
-        'ф' to "f", 'х' to "x", 'ц' to "cz", 'ч' to "ch", 'ш' to "sh", 'щ' to "shh",
-        'ъ' to "``", 'ы' to "y", 'ь' to "`", 'э' to "e`", 'ю' to "yu", 'я' to "ya",
-        // Украинские и белорусские буквы
-        'ґ' to "g`", 'є' to "ye", 'і' to "i", 'ї' to "yi", 'ў' to "w"
+        'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d",
+        'е' to "e", 'ё' to "yo", 'ж' to "zh", 'з' to "z", 'и' to "i",
+        'й' to "j", 'к' to "k", 'л' to "l", 'м' to "m", 'н' to "n",
+        'о' to "o", 'п' to "p", 'р' to "r", 'с' to "s", 'т' to "t",
+        'у' to "u", 'ф' to "f", 'х' to "kh", 'ц' to "cz", 'ч' to "ch",
+        'ш' to "sh", 'щ' to "shh", 'ъ' to "", 'ы' to "y", 'ь' to "",
+        'э' to "e", 'ю' to "yu", 'я' to "ya"
+    )
+
+    // Карта мутаций Leet-speak
+    private val leetTable = mapOf(
+        'o' to '0', 'O' to '0',
+        'e' to '3', 'E' to '3',
+        'a' to '@', 'A' to '@',
+        's' to '$', 'S' to '$',
+        'i' to '1', 'I' to '1',
+        't' to '7', 'T' to '7'
     )
 
     override fun generateFromMnemonic(phrase: String, options: MnemonicOptions): CharArray {
         if (phrase.isBlank()) return charArrayOf()
 
-        // 1. Нормализация и разбиение на слова
-        val words = phrase.trim().lowercase().split(Regex("\\s+"))
-        if (words.isEmpty()) return charArrayOf()
-
-        // 2. Детерминированное усечение корней слов
-        // Считаем доступный лимит длины для слов: общая длина минус длина соли, сервиса и даты
-        val metaLength = options.salt.length + options.serviceName.length + options.rotationDate.length
-        val targetWordsLength = (options.length - metaLength).coerceAtLeast(4)
-        
-        val charsPerWord = (targetWordsLength / words.size).coerceAtLeast(1)
-        
-        val processedPhrase = StringBuilder()
-        for (word in words) {
-        val transliterated = translit(word)
-        // Берем N символов от каждого слова для сохранения семантики корня
-        val truncated = if (transliterated.length > charsPerWord) {
-        transliterated.substring(0, charsPerWord)
+        // 1. Валидация длины под Режим двух пользователей (16, 18 или 20 символов)
+        val targetLength = if (options.isDualUserMode) {
+            when {
+                options.length <= 16 -> 16
+                options.length <= 18 -> 18
+                else -> 20
+            }
         } else {
-        transliterated
+            options.length.coerceIn(8, 64)
         }
+
+        val words = phrase.trim().split("\\s+".toRegex())
+        val totalWords = words.size
         
-    // Делаем первую букву каждого слова заглавной (CamelCase)
-    if (truncated.isNotEmpty()) {
-        processedPhrase.append(truncated.replaceFirstChar { it.uppercase() })
-    }
-}
+        // Вычисляем сколько символов брать от каждого корня слова
+        val charsPerWord = (targetLength / totalWords).coerceAtLeast(2)
+        val processedPhrase = StringBuilder()
 
-        // 3. Сборка сырого конвейера (Детерминированная склейка)
+        // 2. Логика усечения корней слов и транслитерации по ГОСТу
+        for (word in words) {
+            val transliterated = translit(word)
+            val truncated = if (transliterated.length > charsPerWord) {
+                transliterated.substring(0, charsPerWord)
+            } else {
+                transliterated
+            }
+            if (truncated.isNotEmpty()) {
+                processedPhrase.append(truncated.replaceFirstChar { it.uppercase() })
+            }
+        }
+
+        // Подмешиваем соль, имя сервиса и зафиксированную дату ротации
         val rawPassword = "${processedPhrase}${options.serviceName}${options.rotationDate}${options.salt}"
-
-        // 4. Мутация символов (Leet-speak подстановки) и защита от повторов
-        val finalPassword = StringBuilder()
-        val usedChars = HashSet<Char>()
+        
+        // 3. Leet-speak мутация знаков и фильтрация повторов символов (case-insensitive)
+        val uniqueChars = mutableListOf<Char>()
+        val seenCharsLowerCase = mutableSetOf<Char>()
 
         for (ch in rawPassword) {
-            val mutated = when (ch) {
-                'o', 'O', 'о', 'О' -> '0'
-                'i', 'I', 'и', 'И' -> '1'
-                'e', 'E', 'е', 'Е' -> '3'
-                'a', 'A', 'а', 'А' -> '@'
-                's', 'S', 'с', 'С' -> '\$'
-                't', 'T', 'т', 'Т' -> '7'
-                else -> ch
-            }
-
-            // Проверка уникальности без учета регистра для AMPG v2
-            val upperMutated = mutated.uppercaseChar()
-            if (!usedChars.contains(upperMutated)) {
-                finalPassword.append(mutated)
-                usedChars.add(upperMutated)
-            }
+            val mutated = leetTable[ch] ?: ch
+            val lowerMutated = mutated.lowercaseChar()
             
-            if (finalPassword.length >= options.length) break
+            // Жесткое требование оригинального проекта: никаких повторов символов без учета регистра
+            if (!seenCharsLowerCase.contains(lowerMutated) && !mutated.isWhitespace()) {
+                uniqueChars.add(mutated)
+                seenCharsLowerCase.add(lowerMutated)
+            }
         }
 
-        // 5. Если из-за уникальности букв не хватает до длины, добиваем детерминированным хэшем
-        if (finalPassword.length < options.length) {
-            val sha = MessageDigest.getInstance("SHA-256")
-            val hashBytes = sha.digest(rawPassword.toByteArray(Charsets.UTF_8))
-            val hashHex = hashBytes.joinToString("") { "%02x".format(it) }
-            
-            for (ch in hashHex) {
-                val upperCh = ch.uppercaseChar()
-                if (!usedChars.contains(upperCh)) {
-                    finalPassword.append(ch)
-                    usedChars.add(upperCh)
+        // 4. SHA-256 Добивка, если уникальных символов от корней не хватило до целевой длины
+        if (uniqueChars.size < targetLength) {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hashBytes = digest.digest(rawPassword.toByteArray(Charsets.UTF_8))
+            val hashString = hashBytes.joinToString("") { "%02x".format(it) }
+
+            for (ch in hashString) {
+                val upperCh = if (ch.isLetter()) ch.uppercaseChar() else ch
+                val lowerCh = upperCh.lowercaseChar()
+                if (!seenCharsLowerCase.contains(lowerCh)) {
+                    uniqueChars.add(upperCh)
+                    seenCharsLowerCase.add(lowerCh)
+                    if (uniqueChars.size >= targetLength) break
                 }
-                if (finalPassword.length >= options.length) break
             }
         }
 
-        // Строго обрезаем под финальный размер
-        val resultString = finalPassword.toString().substring(0, options.length)
+        // Возвращаем строго усеченный до целевой длины массив символов CharArray
+        val finalPassword = uniqueChars.take(targetLength).toCharArray()
         
-        // 6. Очистка промежуточных данных из памяти
-        usedChars.clear()
+        // Затираем промежуточные списки в памяти ради безопасности
+        uniqueChars.fill(' ')
         
-        return resultString.toCharArray()
+        return finalPassword
     }
 
     private fun translit(word: String): String {
         val result = StringBuilder()
         for (ch in word) {
-            val trans = gostTable[ch]
-            if (trans != null) {
-                result.append(trans)
-            } else {
-                result.append(ch) // Если символ латинский или знак, оставляем
+            val lowerCh = ch.lowercaseChar()
+            val replacement = gostTable[lowerCh]
+            if (replacement != null) {
+                // Сохраняем исходный регистр первой буквы
+                if (ch.isUpperCase() && replacement.isNotEmpty()) {
+                    result.append(replacement.replaceFirstChar { it.uppercase() })
+                } else {
+                    result.append(replacement)
+                }
+            } else if (ch.isLetterOrDigit()) {
+                result.append(ch)
             }
         }
         return result.toString()

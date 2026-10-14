@@ -45,7 +45,7 @@ fun AuthScreen(
             is AuthUiState.ProfileSelection -> {
                 ProfileSelectionView(
                     profiles = state.profiles,
-                    onSelect = viewModel::onSelectProfile,
+                    onSelect = { userProfile -> viewModel.onSelectProfile(userProfile) },
                     onCreateClick = viewModel::navigateToCreateProfile
                 )
             }
@@ -64,12 +64,6 @@ fun AuthScreen(
                     onKeyClick = viewModel::onPinKeyClick,
                     onBackClick = viewModel::cancelCreateProfile
                 )
-            }
-            is AuthUiState.Authenticated -> {
-                LaunchedEffect(Unit) {
-                    onAuthSuccess()
-                }
-                CircularProgressIndicator(color = Color.Green)
             }
         }
     }

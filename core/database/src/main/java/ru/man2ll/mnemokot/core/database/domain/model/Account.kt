@@ -9,5 +9,7 @@ data class Account(
     val passwordLength: Int,
     val salt: String,
     val rotationDate: String,
-    val explicitPassword: String? // Заполнено, только если пароль введен вручную
+    val explicitPassword: String?,
+    // Переносим флаг на уровень бизнес-логики
+    val isDualUserMode: Boolean = false
 )
