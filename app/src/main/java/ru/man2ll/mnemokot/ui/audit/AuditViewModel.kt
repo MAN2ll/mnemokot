@@ -6,17 +6,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import launch
+import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.core.security.audit.PasswordAuditor
 import ru.man2ll.mnemokot.core.security.audit.model.AuditResult
 import javax.inject.Inject
-import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AuditViewModel @Inject constructor(
     private val passwordAuditor: PasswordAuditor,
-    private val sessionManager: SessionManager // Инжектируем менеджер сессии
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _auditResult = MutableStateFlow<AuditResult?>(null)
