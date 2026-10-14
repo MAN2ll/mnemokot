@@ -130,8 +130,8 @@ fun MainNavigationContainer(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Save, contentDescription = "Резерв") },
-                    label = { Text("Резерв") }
+                    icon = { Icon(Icons.Default.Save, contentDescription = "Бэкап") },
+                    label = { Text("Бэкап") }
                 )
             }
         }
