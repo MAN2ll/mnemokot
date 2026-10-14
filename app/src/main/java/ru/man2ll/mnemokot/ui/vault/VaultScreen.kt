@@ -26,8 +26,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showPhraseDialogForAccountId by remember { mutableStateOf<Long?>(null) }
     var mnemonicPhraseInput by remember { mutableStateOf("") }
-
-    // Переменная для отслеживания, является ли текущий просматриваемый аккаунт двухпользовательским
     var isCurrentAccountDualMode by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -36,20 +34,32 @@ fun VaultScreen(viewModel: VaultViewModel) {
                 onClick = { showAddDialog = true }, 
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить аккаунт", tint = Color.Black)
+                Icon(
+                    imageVector = Icons.Default.Add, 
+                    contentDescription = "Добавить аккаунт", 
+                    tint = Color.Black
+                )
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
             if (accounts.isEmpty()) {
                 Text(
                     text = "Журнал пуст. Нажмите +, чтобы добавить первую запись.",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp),
                     color = Color.Gray
                 )
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(16.dp), 
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp), 
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(accounts) { account ->
@@ -69,7 +79,15 @@ fun VaultScreen(viewModel: VaultViewModel) {
             calculatedPassword?.let { password ->
                 AlertDialog(
                     onDismissRequest = { viewModel.clearCalculatedPassword() },
-                    title = { Text(if (isCurrentAccountDualMode) "Разделенный секрет (Режим 2-х пользователей)" else "Ваш безопасный пароль") },
+                    title = { 
+                        Text(
+                            text = if (isCurrentAccountDualMode) {
+                                "Разделенный секрет (Режим 2-х пользователей)"
+                            } else {
+                                "Ваш безопасный пароль"
+                            }
+                        ) 
+                    },
                     text = {
                         Column {
                             if (isCurrentAccountDualMode && password.length >= 16) {
@@ -78,17 +96,34 @@ fun VaultScreen(viewModel: VaultViewModel) {
                                 val part2 = password.substring(halfLength)
                                 
                                 Text("Часть 1 (Пользователь А):", fontSize = 12.sp, color = Color.Gray)
-                                Text(part1, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    text = part1, 
+                                    fontSize = 20.sp, 
+                                    fontWeight = FontWeight.Bold, 
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text("Часть 2 (Пользователь Б):", fontSize = 12.sp, color = Color.Gray)
-                                Text(part2, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                Text(
+                                    text = part2, 
+                                    fontSize = 20.sp, 
+                                    fontWeight = FontWeight.Bold, 
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
                             } else {
-                                Text(password, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    text = password, 
+                                    fontSize = 22.sp, 
+                                    fontWeight = FontWeight.Bold, 
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     },
                     confirmButton = {
-                        Button(onClick = { viewModel.clearCalculatedPassword() }) { Text("Закрыть") }
+                        Button(onClick = { viewModel.clearCalculatedPassword() }) { 
+                            Text("Закрыть") 
+                        }
                     }
                 )
             }
@@ -96,21 +131,32 @@ fun VaultScreen(viewModel: VaultViewModel) {
             // Диалог запроса мнемофразы для расчета пароля
             showPhraseDialogForAccountId?.let { accountId ->
                 AlertDialog(
-                    onDismissRequest = { showPhraseDialogForAccountId = null; mnemonicPhraseInput = "" },
+                    onDismissRequest = { 
+                        showPhraseDialogForAccountId = null
+                        mnemonicPhraseInput = "" 
+                    },
                     title = { Text("Ввод мнемонической фразы") },
                     text = {
                         OutlinedTextField(
                             value = mnemonicPhraseInput,
                             onValueChange = { mnemonicPhraseInput = it },
+                            modifier = Modifier.fillMaxWidth(),
                             label = { Text("Введите секретную фразу") }
                         )
                     },
                     confirmButton = {
-                        Button(onClick = {
-                            viewModel.onCalculatePassword(accountId, mnemonicPhraseInput.takeIf { it.isNotEmpty() })
-                            showPhraseDialogForAccountId = null
-                            mnemonicPhraseInput = ""
-                        }) { Text("Вычислить") }
+                        Button(
+                            onClick = {
+                                viewModel.onCalculatePassword(
+                                    accountId = accountId, 
+                                    phrase = mnemonicPhraseInput.takeIf { it.isNotEmpty() }
+                                )
+                                showPhraseDialogForAccountId = null
+                                mnemonicPhraseInput = ""
+                            }
+                        ) { 
+                            Text("Вычислить") 
+                        }
                     }
                 )
             }
@@ -124,6 +170,68 @@ fun VaultScreen(viewModel: VaultViewModel) {
                         showAddDialog = false
                     }
                 )
+            }
+        }
+    }
+}
+@Composable
+fun AccountItem(
+    account: Account, 
+    onShowPasswordClick: () -> Unit, 
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(), 
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(), 
+            verticalAlignment = Alignment.CenterVertically, 
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = account.serviceName, 
+                    fontSize = 18.sp, 
+                    fontWeight = FontWeight.Bold, 
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = account.login, 
+                    fontSize = 14.sp, 
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text(if (account.isMnemonic) "AMPG v2" else "Стандартный") }
+                    )
+                    if (account.isDualUserMode) {
+                        SuggestionChip(
+                            onClick = {},
+                            label = { Text("2 Пользователя") }
+                        )
+                    }
+                }
+            }
+            Row {
+                IconButton(onClick = onShowPasswordClick) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility, 
+                        contentDescription = "Показать пароль", 
+                        tint = Color.White
+                    )
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete, 
+                        contentDescription = "Удалить", 
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
