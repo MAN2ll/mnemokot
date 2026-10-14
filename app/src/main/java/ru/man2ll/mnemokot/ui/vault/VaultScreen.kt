@@ -130,46 +130,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
 }
 
 @Composable
-fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(), 
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(), 
-            verticalAlignment = Alignment.CenterVertically, 
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                Text(account.login, fontSize = 14.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(if (account.isMnemonic) "AMPG v2" else "Стандартный") }
-                    )
-                    if (account.isDualUserMode) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("2 Пользователя") }
-                        )
-                    }
-                }
-            }
-            Row {
-                IconButton(onClick = onShowPasswordClick) {
-                    Icon(Icons.Default.Visibility, contentDescription = "Показать пароль", tint = Color.White)
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun AddAccountDialog(
     onDismiss: () -> Unit, 
     onSave: (String, String, Boolean, Int, String, String, String?, Boolean) -> Unit
@@ -188,8 +148,22 @@ fun AddAccountDialog(
         title = { Text("Новая учетная запись") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Название сервиса (например, Gmail)") }) }
-                item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин / Email") }) }
+                item { 
+                    OutlinedTextField(
+                        value = service, 
+                        onValueChange = { service = it }, 
+                        modifier = Modifier.fillMaxWidth(), 
+                        label = { Text("Название сервиса (например, Gmail)") }
+                    ) 
+                }
+                item { 
+                    OutlinedTextField(
+                        value = login, 
+                        onValueChange = { login = it }, 
+                        modifier = Modifier.fillMaxWidth(), 
+                        label = { Text("Логин / Email") }
+                    ) 
+                }
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = isMnemonic, onCheckedChange = { isMnemonic = it })
@@ -198,37 +172,84 @@ fun AddAccountDialog(
                 }
                 if (isMnemonic) {
                     item {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically, 
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
                             Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it })
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text("Режим 2-х пользователей", fontWeight = FontWeight.Medium)
                                 Text("Пароль разделится на две равные части", fontSize = 11.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                    item { 
+                        OutlinedTextField(
+                            value = length, 
+                            onValueChange = { length = it }, 
+                            modifier = Modifier.fillMaxWidth(), 
+                            label = { 
+                                Text(
+                                    text = if (isDualUserMode) {
+                                        "Длина пароля (16, 18 или 20)"
+                                    } else {
+                                        "Длина пароля"
+                                    }
+                                ) 
+                            }
+                        ) 
+                    }
+                    item { 
+                        OutlinedTextField(
+                            value = salt, 
+                            onValueChange = { salt = it }, 
+                            modifier = Modifier.fillMaxWidth(), 
+                            label = { Text("Своя соль (необязательно)") }
+                        ) 
+                    }
+                    item { 
+                        OutlinedTextField(
+                            value = rotationDate, 
+                            onValueChange = { rotationDate = it }, 
+                            modifier = Modifier.fillMaxWidth(), 
+                            label = { Text("Дата ротации ММГГ (например, 1026)") }
+                        ) 
+                    }
+                } else {
+                    item { 
+                        OutlinedTextField(
+                            value = explicitPass, 
+                            onValueChange = { explicitPass = it }, 
+                            modifier = Modifier.fillMaxWidth(), 
+                            label = { Text("Введите явный пароль") }
+                        ) 
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        service, 
+                        login, 
+                        isMnemonic, 
+                        length.toIntOrNull() ?: 16, 
+                        salt, 
+                        rotationDate, 
+                        explicitPass.takeIf { it.isNotEmpty() }, 
+                        isDualUserMode
+                    )
+                }
+            ) { 
+                Text("Сохранить") 
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { 
+                Text("Отмена") 
+            }
         }
-    }
-}
-item {
-    OutlinedTextField(
-                    value = length,
-                        onValueChange = { length = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(if (isDualUserMode) "Длина пароля (16, 18 или 20)" else "Длина пароля") }
-)
-}
-item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Своя соль (необязательно)") }) }
-item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Дата ротации ММГГ (например, 1026)") }) }
-} else {
-item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Введите явный пароль") }) }
-}
-}
-},
-confirmButton = {
-Button(onClick = {
-onSave(service, login, isMnemonic, length.toIntOrNull() ?: 16, salt, rotationDate, explicitPass.takeIf { it.isNotEmpty() }, isDualUserMode)
-}) { Text("Сохранить") }
-},
-dismissButton = {
-TextButton(onClick = onDismiss) { Text("Отмена") }
-}
-)
+    )
 }
