@@ -10,11 +10,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
+import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import javax.inject.Inject
 
 @HiltViewModel
 class VaultViewModel @Inject constructor(
-    private val repository: MnemokotRepository
+    private val repository: MnemokotRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
@@ -23,41 +25,30 @@ class VaultViewModel @Inject constructor(
     private val _calculatedPassword = MutableStateFlow<String?>(null)
     val calculatedPassword: StateFlow<String?> = _calculatedPassword.asStateFlow()
 
-    // Исправлено: теперь используется строго корректный синтаксис суффикса Long в Kotlin
-    private val defaultProfileId = 1L
-
     init {
-        loadAccounts()
+        observeActiveProfile()
     }
 
-    private fun loadAccounts() {
+    private fun observeActiveProfile() {
         viewModelScope.launch {
-            repository.getAccounts(defaultProfileId).collectLatest { list ->
-                _accounts.value = list
+            sessionManager.activeProfileId.collectLatest { profileId ->
+                if (profileId != null) {
+                    repository.getAccounts(profileId).collectLatest { list ->
+                        _accounts.value = list
+                    }
+                } else {
+                    _accounts.value = emptyList()
+                }
             }
         }
     }
 
-    fun onAddAccount(
-        serviceName: String,
-        login: String,
-        isMnemonic: Boolean,
-        length: Int,
-        salt: String,
-        rotationDate: String,
-        explicitPass: String?
-    ) {
+    fun onAddAccount(service: String, login: String, isMnemonic: Boolean, len: Int, salt: String, date: String, explicit: String?) {
+        val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val account = Account(
-                id = 0,
-                profileId = defaultProfileId,
-                serviceName = serviceName,
-                login = login,
-                isMnemonic = isMnemonic,
-                passwordLength = length,
-                salt = salt,
-                rotationDate = rotationDate,
-                explicitPassword = explicitPass
+                id = 0, profileId = profileId, serviceName = service, login = login,
+                isMnemonic = isMnemonic, passwordLength = len, salt = salt, rotationDate = date, explicitPassword = explicit
             )
             repository.saveAccount(account)
         }
@@ -73,13 +64,6 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    fun clearCalculatedPassword() {
-        _calculatedPassword.value = null
-    }
-
-    fun onDeleteAccount(id: Long) {
-        viewModelScope.launch {
-            repository.deleteAccount(id)
-        }
-    }
+    fun clearCalculatedPassword() { _calculatedPassword.value = null }
+    fun onDeleteAccount(id: Long) { viewModelScope.launch { repository.deleteAccount(id) } }
 }
