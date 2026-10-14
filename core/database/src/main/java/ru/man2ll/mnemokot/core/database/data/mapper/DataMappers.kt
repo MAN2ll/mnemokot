@@ -20,7 +20,9 @@ fun AccountEntity.toDomain() = Account(
     passwordLength = passwordLength,
     salt = salt,
     rotationDate = rotationDate,
-    explicitPassword = encryptedPassword
+    explicitPassword = encryptedPassword,
+    // Добавляем маппинг нового поля
+    isDualUserMode = isDualUserMode
 )
 
 fun Account.toEntity() = AccountEntity(
@@ -32,5 +34,7 @@ fun Account.toEntity() = AccountEntity(
     passwordLength = passwordLength,
     salt = salt,
     rotationDate = rotationDate,
-    encryptedPassword = explicitPassword
+    encryptedPassword = explicitPassword,
+    // Добавляем маппинг нового поля
+    isDualUserMode = isDualUserMode
 )
