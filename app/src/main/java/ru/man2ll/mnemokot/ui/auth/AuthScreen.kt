@@ -65,12 +65,6 @@ fun AuthScreen(
                     onBackClick = viewModel::cancelCreateProfile
                 )
             }
-            is AuthUiState.Authenticated -> {
-                LaunchedEffect(Unit) {
-                    onAuthSuccess()
-                }
-                CircularProgressIndicator(color = Color.Green)
-            }
         }
     }
 }
@@ -78,7 +72,7 @@ fun AuthScreen(
 @Composable
 fun ProfileSelectionView(
     profiles: List<UserProfile>,
-    onSelect: (UserProfile) -> Unit,
+    onSelect = viewModel::onSelectProfile,
     onCreateClick: () -> Unit
 ) {
     Column(
