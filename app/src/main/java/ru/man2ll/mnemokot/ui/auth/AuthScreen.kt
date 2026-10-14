@@ -53,14 +53,12 @@ fun AuthScreen(
                 CreateProfileView(
                     onCreate = viewModel::onCreateProfile,
                     onCancel = viewModel::cancelCreateProfile,
-                    error = errorMessage,
-                    showCancelButton = state != AuthUiState.CreateProfile // Показываем отмену, если профили вообще есть
+                    error = errorMessage
                 )
             }
             is AuthUiState.EnterPin -> {
                 EnterPinView(
                     profileName = state.profileName,
-                    remainingAttempts = state.remainingAttempts,
                     pinInput = pinInput,
                     error = errorMessage,
                     onKeyClick = viewModel::onPinKeyClick,
@@ -146,8 +144,7 @@ fun ProfileSelectionView(
 fun CreateProfileView(
     onCreate: (String, String) -> Unit,
     onCancel: () -> Unit,
-    error: String?,
-    showCancelButton: Boolean
+    error: String?
 ) {
     var name by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
@@ -192,11 +189,9 @@ fun CreateProfileView(
             Text("Создать и войти")
         }
 
-        if (showCancelButton) {
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-                Text("Назад к выбору профилей")
-            }
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
+            Text("Назад к выбору профилей")
         }
     }
 }
@@ -204,7 +199,6 @@ fun CreateProfileView(
 @Composable
 fun EnterPinView(
     profileName: String,
-    remainingAttempts: Int,
     pinInput: String,
     error: String?,
     onKeyClick: (String) -> Unit,
@@ -229,7 +223,6 @@ fun EnterPinView(
         Text(text = "Введите PIN-код для разблокировки сейфа", fontSize = 14.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Индикаторы ввода PIN
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(4) { index ->
                 val isFilled = index < pinInput.length
@@ -249,7 +242,6 @@ fun EnterPinView(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Клавиатура 3х4
         val keys = listOf(
             listOf("1", "2", "3"),
             listOf("4", "5", "6"),
@@ -279,3 +271,6 @@ fun EnterPinView(
                     }
                 }
             }
+        }
+    }
+}
