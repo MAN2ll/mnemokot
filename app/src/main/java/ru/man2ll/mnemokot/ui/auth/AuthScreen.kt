@@ -45,7 +45,7 @@ fun AuthScreen(
             is AuthUiState.ProfileSelection -> {
                 ProfileSelectionView(
                     profiles = state.profiles,
-                    onSelect = viewModel::onSelectProfile,
+                    onSelect = { userProfile -> viewModel.onSelectProfile(userProfile) },
                     onCreateClick = viewModel::navigateToCreateProfile
                 )
             }
@@ -72,7 +72,7 @@ fun AuthScreen(
 @Composable
 fun ProfileSelectionView(
     profiles: List<UserProfile>,
-    onSelect = viewModel::onSelectProfile,
+    onSelect: (UserProfile) -> Unit,
     onCreateClick: () -> Unit
 ) {
     Column(
