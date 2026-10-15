@@ -18,17 +18,18 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["profileId"])]
 )
 data class AccountEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val profileId: Long,
     val serviceName: String,
     val login: String,
     val isMnemonic: Boolean,
     val passwordLength: Int = 16,
     val salt: String = "",
-    val rotationDate: String = "",
+    val rotationDate: String = "", // Оставляем для совместимости со старыми вызовами
     val encryptedPassword: String? = null,
-    // Новое поле для поддержки режима двух пользователей AMPG v2
     val isDualUserMode: Boolean = false,
+    // Новые поля жизненного цикла пароля
+    val createdAt: Long = System.currentTimeMillis(),
+    val expiresAt: Long = 0L, // 0L означает "Вечный пароль"
     val updatedAt: Long = System.currentTimeMillis()
 )
