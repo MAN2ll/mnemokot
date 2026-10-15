@@ -7,6 +7,7 @@ import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
+import ru.man2ll.mnemokot.core.database.data.MnemokotDatabase
 import ru.man2ll.mnemokot.core.database.data.mapper.toDomain
 import ru.man2ll.mnemokot.core.database.data.mapper.toEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
