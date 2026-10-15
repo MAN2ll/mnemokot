@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -15,7 +16,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,7 +62,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
 
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    val scope = rememberCoroutineScope() // Создали compose-скоуп для запуска конвертов
+    val scope = rememberCoroutineScope()
 
     val barcodeLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         val contents = result.contents
@@ -77,13 +77,12 @@ fun VaultScreen(viewModel: VaultViewModel) {
         }
     }
 
-    // Фильтрация списка на лету по названию, логину или тегам (например, через #)
     val filteredAccounts = remember(accounts, searchQuery) {
         if (searchQuery.isBlank()) accounts else {
             accounts.filter { 
                 it.serviceName.contains(searchQuery, ignoreCase = true) || 
                 it.login.contains(searchQuery, ignoreCase = true) ||
-                (it.rotationDate.contains(searchQuery, ignoreCase = true)) // Хранит тег или метаданные
+                it.salt.contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -98,8 +97,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
         }
     ) { p ->
         Column(modifier = Modifier.padding(p).fillMaxSize()) {
-            
-            // СТРОКА ПОИСКА И ТЕГОВЫЙ СЕЛЕКТОР
             if (!isSelectionMode) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -110,8 +107,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
                     singleLine = true
                 )
             }
-
-            // ПАНЕЛЬ ДЕЙСТВИЙ (РОТАЦИЯ ИЛИ ВЫГРУЗКА КОНВЕРТА)
             if (accounts.isNotEmpty()) {
                 Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondaryContainer, tonalElevation = 2.dp) {
                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -133,14 +128,24 @@ fun VaultScreen(viewModel: VaultViewModel) {
                                 TextButton(onClick = { viewModel.cancelSelectionMode() }) { Text("Отмена") }
                                 Button(onClick = { viewModel.runSelectedPasswordRotation() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Перемешать", fontSize = 11.sp) }
                                 Button(onClick = { 
-                                    // Выгрузка экстренного служебного конверта безопасности
                                     val ids = selectedAccountIds.toList()
-                                    if (ids.size < 1) { Toast.makeText(context, "Отметьте записи", Toast.LENGTH_SHORT).show() }
+                                    if (ids.isEmpty()) { Toast.makeText(context, "Отметьте записи", Toast.LENGTH_SHORT).show() }
                                     else {
-                                        kotlinx.coroutines.MainScope().launch {
-                                            // Временный вызов генератора текста
-                                            val txt = "=== КОНВЕРТ БЕЗОПАСНОСТИ ===\nВыбранные записи выгружены в открытом виде для архивации.\nОтветственность переложена на пользователя."
-                                            showEnvelopeReportDialog = txt
+                                        scope.launch {
+                                            val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                                            val builder = StringBuilder()
+                                            builder.append("=========================================\n")
+                                            builder.append("      СЛУЖЕБНЫЙ КОНВЕРТ БЕЗОПАСНОСТИ      \n")
+                                            builder.append("=========================================\n")
+                                            builder.append("Дата выгрузки: ${dateFormat.format(System.currentTimeMillis())}\n\n")
+                                            accounts.filter { ids.contains(it.id) }.forEachIndexed { idx, acc ->
+                                                builder.append("${idx + 1}. СЕРВИС: ${acc.serviceName}\n")
+                                                builder.append("   ЛОГИН:  ${acc.login}\n")
+                                                builder.append("   ТИП:    ${if (acc.isMnemonic) "Мнемокод" else "Явный"}\n")
+                                                builder.append("-----------------------------------------\n")
+                                            }
+                                            builder.append("Выгружено в открытом виде. Храните лист в сейфе.")
+                                            showEnvelopeReportDialog = builder.toString()
                                         }
                                     }
                                 }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)) { Text("📄 Конверт", fontSize = 11.sp) }
@@ -149,65 +154,52 @@ fun VaultScreen(viewModel: VaultViewModel) {
                     }
                 }
             }
+
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 if (filteredAccounts.isEmpty()) {
                     Text("Записей не найдено.", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(filteredAccounts) { acc ->
-                            AccountItem(
-                                account = acc,
-                                isSelectionMode = isSelectionMode,
-                                isSelected = selectedAccountIds.contains(acc.id),
-                                onSelectToggle = { viewModel.toggleAccountSelection(acc.id) },
-                                onShowPasswordClick = { viewModel.clearVaultError(); pinVerificationInput = ""; showPinDialogForAccountId = acc.id },
-                                onDeleteClick = { viewModel.onDeleteAccount(acc.id) },
-                                onEditClick = { 
-                                    isEditMode = true
-                                    showAddEditDialogForAccount = acc
-                                    showAddDialog = true
-                                }
-                            )
+                            AccountItem(acc, isSelectionMode, selectedAccountIds.contains(acc.id), { viewModel.toggleAccountSelection(acc.id) }, { viewModel.clearVaultError(); pinVerificationInput = ""; showPinDialogForAccountId = acc.id }, { viewModel.onDeleteAccount(acc.id) }, { isEditMode = true; showAddEditDialogForAccount = acc; showAddDialog = true })
                         }
                     }
                 }
                 
                 vaultError?.let { report ->
-                    AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Уведомление системы аудита", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("ОК") } })
+                    AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Системный аудит", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("ОК") } })
                 }
 
-                // ДИАЛОГ ОТОБРАЖЕНИЯ ОТКРЫТОГО ТЕКСТА СЛУЖЕБНОГО КОНВЕРТА С ДИСКЛЕЙМЕРОМ
                 showEnvelopeReportDialog?.let { reportText ->
                     AlertDialog(
                         onDismissRequest = { showEnvelopeReportDialog = null },
-                        title = { Text("Экстренный конверт безопасности", fontWeight = FontWeight.Bold) },
+                        title = { Text("Конверт безопасности", fontWeight = FontWeight.Bold) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
-                                    Text("⚠ ВНИМАНИЕ: Данные выгружаются в ОТКРЫТОМ ТЕКСТОВОМ ВИДЕ. Программа не несет ответственности за физическую сохранность распечатанного листа.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(8.dp))
+                                    Text("⚠ ВНИМАНИЕ: Данные выгружаются в открытом виде. Программа не несет ответственности за физическую сохранность распечатанного отчета.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(8.dp))
                                 }
-                                OutlinedTextField(value = reportText, onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().height(150.dp), textStyle = MaterialTheme.typography.bodySmall)
+                                OutlinedTextField(value = reportText, onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().height(140.dp), textStyle = MaterialTheme.typography.bodySmall)
                             }
                         },
                         confirmButton = {
                             Button(onClick = { 
                                 clipboardManager.setText(AnnotatedString(reportText))
-                                Toast.makeText(context, "Текст отчета скопирован в буфер!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Скопировано в буфер!", Toast.LENGTH_SHORT).show()
                                 showEnvelopeReportDialog = null
                                 viewModel.cancelSelectionMode()
-                            }) { Text("Скопировать отчет") }
+                            }) { Text("Скопировать") }
                         },
                         dismissButton = { TextButton(onClick = { showEnvelopeReportDialog = null }) { Text("Закрыть") } }
                     )
                 }
-
                 showPinDialogForAccountId?.let { id ->
                     AlertDialog(
                         onDismissRequest = { showPinDialogForAccountId = null; pinVerificationInput = ""; viewModel.clearVaultError() },
                         title = { Text("Подтверждение операции") },
                         text = {
                             Column {
-                                Text("Введите PIN-код текущего профиля для доступа:", fontSize = 14.sp, color = Color.Gray)
+                                Text("Введите PIN-код текущего профиля:", fontSize = 14.sp, color = Color.Gray)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 OutlinedTextField(value = pinVerificationInput, onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 6) pinVerificationInput = it }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                             }
@@ -230,7 +222,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
                 calculatedPassword?.let { pass ->
                     AlertDialog(
                         onDismissRequest = { viewModel.clearCalculatedPassword() },
-                        title = { Text(if (isCurrentAccountDualMode) "Разделенный секрет" else "Секретный пароль") },
+                        title = { Text(if (isCurrentAccountDualMode) "Разделенный секрет" else "Ваш пароль") },
                         text = {
                             Column {
                                 if (isCurrentAccountDualMode && pass.length >= 16) {
@@ -249,7 +241,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { 
                                     clipboardManager.setText(AnnotatedString(pass))
-                                    Toast.makeText(context, "Пароль скопирован!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Скопировано в буфер!", Toast.LENGTH_SHORT).show()
                                     viewModel.clearCalculatedPassword()
                                 }) { Text("Копировать") }
                                 TextButton(onClick = { viewModel.clearCalculatedPassword() }) { Text("Закрыть") }
@@ -259,24 +251,17 @@ fun VaultScreen(viewModel: VaultViewModel) {
                 }
 
                 showPhraseDialogForAccountId?.let { id ->
-                    AlertDialog(onDismissRequest = { showPhraseDialogForAccountId = null; mnemonicPhraseInput = "" }, title = { Text("Расчет парольной фразы") }, text = { OutlinedTextField(value = mnemonicPhraseInput, onValueChange = { mnemonicPhraseInput = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Мнемофраза") }) }, confirmButton = { Button(onClick = { viewModel.onCalculatePassword(id, mnemonicPhraseInput.takeIf { it.isNotEmpty() }); showPhraseDialogForAccountId = null; mnemonicPhraseInput = "" }) { Text("Вычислить") } })
+                    AlertDialog(onDismissRequest = { showPhraseDialogForAccountId = null; mnemonicPhraseInput = "" }, title = { Text("Ввод мнемосхемы") }, text = { OutlinedTextField(value = mnemonicPhraseInput, onValueChange = { mnemonicPhraseInput = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Мнемофраза") }) }, confirmButton = { Button(onClick = { viewModel.onCalculatePassword(id, mnemonicPhraseInput.takeIf { it.isNotEmpty() }); showPhraseDialogForAccountId = null; mnemonicPhraseInput = "" }) { Text("Расчет") } })
                 }
 
                 if (showAddDialog) {
-                    AddAccountDialog(
-                        accountToEdit = if (isEditMode) showAddEditDialogForAccount else null,
-                        onDismiss = { showAddDialog = false; isEditMode = false },
-                        onSave = { s, l, m, len, sl, d, ex, dl -> 
-                            viewModel.onAddAccount(s, l, m, len, sl, d, ex, dl)
-                            showAddDialog = false
-                            isEditMode = false
-                        }
-                    )
+                    AddAccountDialog(accountToEdit = if (isEditMode) showAddEditDialogForAccount else null, onDismiss = { showAddDialog = false; isEditMode = false }, onSave = { s, l, m, len, sl, d, ex, dl -> viewModel.onAddAccount(s, l, m, len, sl, d, ex, dl); showAddDialog = false; isEditMode = false })
                 }
             }
         }
     }
 }
+
 @Composable
 fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean, onSelectToggle: () -> Unit, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit, onEditClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -288,22 +273,14 @@ fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean,
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    // Вывод тега, если он указан
-                    if (account.salt.startsWith("#")) {
-                        Text(account.salt, fontSize = 11.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.SemiBold)
-                    }
+                    if (account.salt.startsWith("#")) { Text(account.salt, fontSize = 12.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold) }
                 }
                 Text(account.login, fontSize = 14.sp, color = Color.Gray)
-                
-                // РАСЧЕТ И ПРЕДУПРЕЖДЕНИЕ СРОКА ЖИЗНИ ПАРОЛЯ
                 if (account.expiresAt > 0L) {
                     val daysLeft = ((account.expiresAt - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).coerceAtLeast(0)
                     Text(text = if (daysLeft > 0) "Истекает через: $daysLeft дн." else "Пароль устарел! Требуется смена", fontSize = 12.sp, color = if (daysLeft <= 7) Color(0xFFEF5350) else Color(0xFFFFEE58), fontWeight = FontWeight.Medium)
                 } else { Text("Срок действия: Вечный", fontSize = 12.sp, color = Color.LightGray) }
-                
-                // НОВЫЕ ОТМЕТКИ ВРЕМЕНИ СОЗДАНИЯ И ИЗМЕНЕНИЯ ЗАПИСИ
-                Text("Создан: ${dateFormat.format(account.createdAt)} | Изменен: ${dateFormat.format(System.currentTimeMillis())}", fontSize = 10.sp, color = Color.Gray)
-                
+                Text("Создан: ${dateFormat.format(account.createdAt)}", fontSize = 10.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     SuggestionChip(onClick = {}, label = { Text(if (account.isMnemonic) "Парольная фраза" else "Явный") })
@@ -314,14 +291,7 @@ fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean,
                 }
             }
             if (isSelectionMode) { Checkbox(checked = isSelected, onCheckedChange = { onSelectToggle() }) }
-            else { 
-                Row { 
-                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Редактировать", tint = Color.LightGray) }
-                    IconButton(onClick = { showQrDialog = true }) { Text("📷", fontSize = 16.sp) }
-                    IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }
-                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } 
-                } 
-            }
+            else { Row { IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Правка", tint = Color.LightGray) }; IconButton(onClick = { showQrDialog = true }) { Text("📷", fontSize = 16.sp) }; IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }; IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } } }
         }
     }
     if (showQrDialog) {
@@ -336,7 +306,7 @@ fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean,
                     if (qrBitmap != null) { androidx.compose.foundation.Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.size(200.dp)) }
                     else { Text("Ошибка матрицы", color = MaterialTheme.colorScheme.error) }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Surface(color = Color(0xFF1B2A1C), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Surface(color = Color(0xFF1B2A1C), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                         Text(text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.", fontSize = 11.sp, color = Color.LightGray, modifier = Modifier.padding(8.dp), lineHeight = 14.sp)
                     }
                 }
@@ -451,7 +421,7 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
         data = android.provider.CalendarContract.Events.CONTENT_URI
         putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
-        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
+        putExtra(android.provider.CalendarContract.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName.")
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000)
         putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
