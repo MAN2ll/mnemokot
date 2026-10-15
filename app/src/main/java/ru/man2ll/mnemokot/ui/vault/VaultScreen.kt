@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -46,7 +48,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedAccountIds by viewModel.selectedAccountIds.collectAsState()
     
-    // Стейты локального поиска, редактирования и выгрузки конвертов
     var searchQuery by remember { mutableStateOf("") }
     var showAddEditDialogForAccount by remember { mutableStateOf<Account?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
@@ -61,6 +62,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
 
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope() // Создали compose-скоуп для запуска конвертов
 
     val barcodeLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         val contents = result.contents
