@@ -25,6 +25,7 @@ fun MasterAuthScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
 
+    // Метод вызова аппаратного сканера отпечатка пальца с мягким подавлением отмены
     fun showBiometricPrompt() {
         val activity = context as? FragmentActivity ?: return
         val executor = ContextCompat.getMainExecutor(context)
@@ -34,6 +35,11 @@ fun MasterAuthScreen(
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
                     viewModel.onBiometricSuccess()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    // ФИКС: Если пользователь нажал кнопку отмены или "Ввести пароль" — не закрываем приложение
                 }
             })
 
@@ -58,7 +64,13 @@ fun MasterAuthScreen(
         when (val state = uiState) {
             is MasterUiState.Loading -> CircularProgressIndicator()
             is MasterUiState.SetupMaster -> {
-                MasterSetupView(onSave = viewModel::onSetupMasterPassword, error = errorMessage)
+                MasterSetupView(
+                    onSave = { pass, enableBio -> 
+                        viewModel.setBiometricPreference(enableBio)
+                        viewModel.onSetupMasterPassword(pass)
+                    }, 
+                    error = errorMessage
+                )
             }
             is MasterUiState.EnterMaster -> {
                 MasterLoginView(
@@ -74,11 +86,11 @@ fun MasterAuthScreen(
         }
     }
 }
-
 @Composable
-fun MasterSetupView(onSave: (String) -> Unit, error: String?) {
+fun MasterSetupView(onSave: (String, Boolean) -> Unit, error: String?) {
     var pass by remember { mutableStateOf("") }
     var confirmPass by remember { mutableStateOf("") }
+    var enableBiometric by remember { mutableStateOf(true) } // По умолчанию предлагаем биометрию
     var localError by remember { mutableStateOf<String?>(null) }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -89,11 +101,22 @@ fun MasterSetupView(onSave: (String) -> Unit, error: String?) {
         
         OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Придумайте Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = confirmPass, onValueChange = { confirmPass = it }, label = { Text("Повторите Маtext-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = confirmPass, onValueChange = { confirmPass = it }, label = { Text("Повторите Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         
+        Spacer(modifier = Modifier.height(16.dp))
+        // ОПЦИЯ: Включение биометрии прямо на этапе создания пароля
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+            Switch(checked = enableBiometric, onCheckedChange = { enableBiometric = it })
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text("Вход по отпечатку пальца", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Использовать биометрию устройства", fontSize = 11.sp, color = Color.Gray)
+            }
+        }
+
         val displayError = error ?: localError
         if (displayError != null) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(displayError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
         }
         
@@ -101,7 +124,7 @@ fun MasterSetupView(onSave: (String) -> Unit, error: String?) {
         Button(
             onClick = {
                 if (pass != confirmPass) { localError = "Пароли не совпадают!" }
-                else { localError = null; onSave(pass) }
+                else { localError = null; onSave(pass, enableBiometric) }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
