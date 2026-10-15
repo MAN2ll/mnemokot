@@ -305,3 +305,16 @@ fun generateRandomPassword(length: Int, useUpper: Boolean, useDigits: Boolean, u
         .map { allowedChars[secureRandom.nextInt(allowedChars.length)] }
         .joinToString("")
 }
+fun addPasswordRotationReminder(context: android.content.Context, serviceName: String, expiresAt: Long) {
+    if (expiresAt <= 0L) return
+    val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
+        data = android.provider.CalendarContract.Events.CONTENT_URI
+        putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
+        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
+        putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
+        putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000) // +1 час
+        putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
+        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(intent)
+}
