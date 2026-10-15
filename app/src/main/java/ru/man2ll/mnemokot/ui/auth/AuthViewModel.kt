@@ -70,12 +70,24 @@ class AuthViewModel @Inject constructor(
     }
 
     fun navigateToCreateProfile() {
+        _pinInput.value = ""
+        _errorMessage.value = null
         _uiState.value = AuthUiState.CreateProfile
     }
 
     fun cancelCreateProfile() {
+        _pinInput.value = ""
+        _errorMessage.value = null
         sessionManager.logout()
-        observeProfiles()
+        // Принудительно заставляем перечитать базу, возвращаясь к списку
+        viewModelScope.launch {
+            val profiles = repository.getProfiles().first()
+            if (profiles.isNotEmpty()) {
+                _uiState.value = AuthUiState.ProfileSelection(profiles)
+            } else {
+                _uiState.value = AuthUiState.CreateProfile
+            }
+        }
     }
 
     fun onCreateProfile(name: String, pin: String) {
@@ -95,14 +107,26 @@ class AuthViewModel @Inject constructor(
 
     fun onPinKeyClick(key: String) {
         _errorMessage.value = null
+        val currentPin = _pinInput.value
         if (key == "C") {
-            if (_pinInput.value.isNotEmpty()) _pinInput.value = _pinInput.value.dropLast(1)
+            if (currentPin.isNotEmpty()) _pinInput.value = currentPin.dropLast(1)
         } else {
-            if (_pinInput.value.length < 6) _pinInput.value += key
+            // Аппаратно поддерживаем ввод PIN-кода переменной длины до 6 символов
+            if (currentPin.length < 6) _pinInput.value = currentPin + key
         }
 
+        // Проверяем PIN, если введено от 4 до 6 символов и пользователь сделал паузу, 
+        // либо если введено ровно 6 символов (максимальный лимит)
+        if (_pinInput.value.length == 6) {
+            verifyPin()
+        }
+    }
+    
+    fun triggerManualVerification() {
         if (_pinInput.value.length >= 4) {
             verifyPin()
+        } else {
+            _errorMessage.value = "PIN-код должен быть от 4 до 6 цифр"
         }
     }
 
