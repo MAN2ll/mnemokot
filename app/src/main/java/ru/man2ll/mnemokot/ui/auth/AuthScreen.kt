@@ -62,13 +62,13 @@ fun AuthScreen(
                     pinInput = pinInput,
                     error = errorMessage,
                     onKeyClick = viewModel::onPinKeyClick,
-                    onBackClick = viewModel::cancelCreateProfile
+                    onBackClick = viewModel::cancelCreateProfile,
+                    onConfirmClick = { viewModel.triggerManualVerification() }
                 )
             }
         }
     }
 }
-
 @Composable
 fun ProfileSelectionView(
     profiles: List<UserProfile>,
@@ -197,7 +197,7 @@ fun EnterPinView(
     error: String?,
     onKeyClick: (String) -> Unit,
     onBackClick: () -> Unit,
-    onConfirmClick: () -> Unit // Новый callback подтверждения PIN переменной длины
+    onConfirmClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -218,14 +218,13 @@ fun EnterPinView(
         Text(text = "Введите PIN-код (от 4 до 6 цифр)", fontSize = 14.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ИСПРАВЛЕНИЕ: Динамическая шкала на 6 аппаратных точек-индикаторов
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(6) { index ->
                 val isFilled = index < pinInput.length
                 Box(
                     modifier = Modifier
                         .size(16.dp)
-                        .clip(androidx.compose.ui.draw.clip(androidx.compose.ui. Dunk / CircleShape))
+                        .clip(CircleShape)
                         .background(if (isFilled) MaterialTheme.colorScheme.primary else Color.DarkGray)
                 )
             }
@@ -257,7 +256,7 @@ fun EnterPinView(
                         Box(
                             modifier = Modifier
                                 .size(64.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { onKeyClick(key) },
                             contentAlignment = Alignment.Center
@@ -270,11 +269,10 @@ fun EnterPinView(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        // НОВАЯ КНОПКА: Для отправки PIN-кодов длиной 4 или 5 символов
         Button(
             onClick = onConfirmClick,
             modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
             Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
