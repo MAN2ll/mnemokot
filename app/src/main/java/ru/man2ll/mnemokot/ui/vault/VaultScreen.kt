@@ -119,15 +119,38 @@ fun VaultScreen(viewModel: VaultViewModel) {
 
 @Composable
 fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(account.login, fontSize = 14.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                
+                // Расчет оставшихся дней жизни пароля
+                if (account.expiresAt > 0L) {
+                    val daysLeft = ((account.expiresAt - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).coerceAtLeast(0)
+                    Text(
+                        text = if (daysLeft > 0) "Истекает через: $daysLeft дн." else "Пароль устарел! Требуется смена",
+                        fontSize = 12.sp,
+                        color = if (daysLeft <= 7) Color(0xFFEF5350) else Color(0xFFFFEE58),
+                        fontWeight = FontWeight.Medium
+                    )
+                } else {
+                    Text("Срок действия: Вечный", fontSize = 12.sp, color = Color.LightGray)
+                }
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     SuggestionChip(onClick = {}, label = { Text(if (account.isMnemonic) "AMPG v2" else "Явный") })
                     if (account.isDualUserMode) SuggestionChip(onClick = {}, label = { Text("2 Игрока") })
+                    
+                    // Кнопка напоминания в календарь, если пароль имеет срок годности
+                    if (account.expiresAt > 0L) {
+                        TextButton(
+                            onClick = { addPasswordRotationReminder(context, account.serviceName, account.expiresAt) },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                        ) { Text("⏰ В календарь", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary) }
+                    }
                 }
             }
             Row {
@@ -138,38 +161,31 @@ fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick
     }
 }
 @Composable
-fun AddAccountDialog(
-    onDismiss: () -> Unit, 
-    onSave: (String, String, Boolean, Int, String, String, String?, Boolean) -> Unit
-) {
+fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, Int, String, Int, String?, Boolean) -> Unit) {
     var service by remember { mutableStateOf("") }
     var login by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableStateOf(0) } // 0 - Вручную, 1 - Случайный, 2 - Мнемокод
-    
-    // Стейты для ручного ввода
+    var selectedTab by remember { mutableStateOf(0) }
     var explicitPass by remember { mutableStateOf("") }
-    
-    // Стейты для случайного генератора
     var randomLength by remember { mutableStateOf("16") }
     var useUpper by remember { mutableStateOf(true) }
     var useDigits by remember { mutableStateOf(true) }
     var useSpecial by remember { mutableStateOf(false) }
-    
-    // Стейты для мнемокода AMPG v2
     var length by remember { mutableStateOf("16") }
     var salt by remember { mutableStateOf("") }
-    var rotationDate by remember { mutableStateOf("") }
     var isDualUserMode by remember { mutableStateOf(false) }
+    
+    // Новая логика выпадающего списка дней жизни
+    var daysMenuExpanded by remember { mutableStateOf(false) }
+    val daysOptions = listOf(0 to "Вечный пароль", 30 to "30 дней", 90 to "90 дней", 180 to "180 дней")
+    var selectedDaysOption by remember { mutableStateOf(daysOptions[0]) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый аккаунт", fontWeight = FontWeight.Bold) },
+        title = { Text("Новая учетная запись", fontWeight = FontWeight.Bold) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Название сервиса") }) }
                 item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин / Email") }) }
-                
-                // Панель переключения режимов генерации
                 item {
                     TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(vertical = 4.dp)) {
                         Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Вручную", fontSize = 12.sp) })
@@ -177,87 +193,47 @@ fun AddAccountDialog(
                         Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Мнемо", fontSize = 12.sp) })
                     }
                 }
-
                 when (selectedTab) {
-                    0 -> { // ВКЛАДКА: РУЧНОЙ ВВОД
-                        item {
-                            OutlinedTextField(
-                                value = explicitPass, 
-                                onValueChange = { explicitPass = it }, 
-                                modifier = Modifier.fillMaxWidth(), 
-                                label = { Text("Введите ваш пароль") },
-                                visualTransformation = PasswordVisualTransformation()
-                            )
-                        }
+                    0 -> {
+                        item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Введите ваш пароль") }, visualTransformation = PasswordVisualTransformation()) }
                         item { PasswordStrengthMeter(password = explicitPass) }
                     }
-                    1 -> { // ВКЛАДКА: СЛУЧАЙНЫЙ ГЕНЕРАТОР
+                    1 -> {
                         item { OutlinedTextField(value = randomLength, onValueChange = { randomLength = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Длина случайного пароля") }) }
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = useUpper, onCheckedChange = { useUpper = it })
-                                Text("ЗАГЛАВНЫЕ БУКВЫ", fontSize = 14.sp)
-                            }
-                        }
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = useDigits, onCheckedChange = { useDigits = it })
-                                Text("Цифры (0-9)", fontSize = 14.sp)
-                            }
-                        }
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = useSpecial, onCheckedChange = { useSpecial = it })
-                                Text("Спецсимволы (%$#@)", fontSize = 14.sp)
-                            }
-                        }
-                        item {
-                            Button(
-                                onClick = { 
-                                    val len = randomLength.toIntOrNull() ?: 16
-                                    explicitPass = generateRandomPassword(len, useUpper, useDigits, useSpecial)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("Сгенерировать случайный пароль") }
-                        }
-                        if (explicitPass.isNotEmpty()) {
-                            item { OutlinedTextField(value = explicitPass, onValueChange = {}, modifier = Modifier.fillMaxWidth(), label = { Text("Результат генерации") }, readOnly = true) }
-                        }
+                        item { Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = useUpper, onCheckedChange = { useUpper = it }); Text("ЗАГЛАВНЫЕ БУКВЫ", fontSize = 14.sp) } }
+                        item { Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = useDigits, onCheckedChange = { useDigits = it }); Text("Цифры (0-9)", fontSize = 14.sp) } }
+                        item { Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = useSpecial, onCheckedChange = { useSpecial = it }); Text("Спецсимволы (%$#@)", fontSize = 14.sp) } }
+                        item { Button(onClick = { explicitPass = generateRandomPassword(randomLength.toIntOrNull() ?: 16, useUpper, useDigits, useSpecial) }, modifier = Modifier.fillMaxWidth()) { Text("Сгенерировать случайный пароль") } }
+                        if (explicitPass.isNotEmpty()) { item { OutlinedTextField(value = explicitPass, onValueChange = {}, modifier = Modifier.fillMaxWidth(), label = { Text("Результат генерации") }, readOnly = true) } }
                     }
-                    { // ВКЛАДКА: МНЕМОКОД AMPG v2
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text("Режим 2-х пользователей", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                    Text("Пароль разделится на две равные части", fontSize = 11.sp, color = Color.Gray)
-                                }
-                            }
-                        }
+                    2 -> {
+                        item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it }); Spacer(modifier = Modifier.width(8.dp)); Column { Text("Режим 2-х пользователей", fontSize = 14.sp, fontWeight = FontWeight.Medium); Text("Пароль разделится пополам", fontSize = 11.sp, color = Color.Gray) } } }
                         item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text(if (isDualUserMode) "Длина пароля (16, 18 или 20)" else "Длина пароля") }) }
                         item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Своя соль (необязательно)") }) }
-                        item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Срок действия (дней: например, 90)") }) }
+                    }
+                }
+                // Селектор срока действия для всех типов паролей
+                item {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = { daysMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Срок действия: ${selectedDaysOption.second}")
+                        }
+                        DropdownMenu(expanded = daysMenuExpanded, onDismissRequest = { daysMenuExpanded = false }) {
+                            daysOptions.forEach { option ->
+                                DropdownMenuItem(text = { Text(option.second) }, onClick = { selectedDaysOption = option; daysMenuExpanded = false })
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    val isMnemonicType = (selectedTab == 2)
-                    val finalLen = when (selectedTab) {
-                        1 -> randomLength.toIntOrNull() ?: 16
-                        else -> length.toIntOrNull() ?: 16
-                    }
-                    val finalExplicit = if (selectedTab == 0 || selectedTab == 1) explicitPass.takeIf { it.isNotEmpty() } else null
-                    
-                    onSave(service, login, isMnemonicType, finalLen, salt, rotationDate, finalExplicit, isDualUserMode)
-                }
-            ) { Text("Сохранить") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
+            Button(onClick = {
+                val isMnemonicType = (selectedTab == 2)
+                val finalLen = if (selectedTab == 1) randomLength.toIntOrNull() ?: 16 else length.toIntOrNull() ?: 16
+                val finalExplicit = if (selectedTab == 0 || selectedTab == 1) explicitPass.takeIf { it.isNotEmpty() } else null
+                onSave(service, login, isMnemonicType, finalLen, salt, selectedDaysOption.first, finalExplicit, isDualUserMode)
+            }) { Text("Сохранить") }
         }
     )
 }
