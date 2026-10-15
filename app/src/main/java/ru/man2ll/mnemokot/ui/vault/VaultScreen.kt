@@ -138,46 +138,127 @@ fun AccountItem(account: Account, onShowPasswordClick: () -> Unit, onDeleteClick
     }
 }
 @Composable
-fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, Int, String, String, String?, Boolean) -> Unit) {
+fun AddAccountDialog(
+    onDismiss: () -> Unit, 
+    onSave: (String, String, Boolean, Int, String, String, String?, Boolean) -> Unit
+) {
     var service by remember { mutableStateOf("") }
     var login by remember { mutableStateOf("") }
-    var isMnemonic by remember { mutableStateOf(true) }
+    var selectedTab by remember { mutableStateOf(0) } // 0 - Вручную, 1 - Случайный, 2 - Мнемокод
+    
+    // Стейты для ручного ввода
+    var explicitPass by remember { mutableStateOf("") }
+    
+    // Стейты для случайного генератора
+    var randomLength by remember { mutableStateOf("16") }
+    var useUpper by remember { mutableStateOf(true) }
+    var useDigits by remember { mutableStateOf(true) }
+    var useSpecial by remember { mutableStateOf(false) }
+    
+    // Стейты для мнемокода AMPG v2
     var length by remember { mutableStateOf("16") }
     var salt by remember { mutableStateOf("") }
     var rotationDate by remember { mutableStateOf("") }
-    var explicitPass by remember { mutableStateOf("") }
     var isDualUserMode by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый аккаунт") },
+        title = { Text("Новый аккаунт", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Сервис") }) }
-                item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин") }) }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Название сервиса") }) }
+                item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин / Email") }) }
+                
+                // Панель переключения режимов генерации
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = isMnemonic, onCheckedChange = { isMnemonic = it })
-                        Text("Генератор AMPG v2")
+                    TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Вручную", fontSize = 12.sp) })
+                        Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Кубики", fontSize = 12.sp) })
+                        Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Мнемо", fontSize = 12.sp) })
                     }
                 }
-                if (isMnemonic) {
-                    item {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it })
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Режим двух пользователей", fontSize = 14.sp)
+
+                when (selectedTab) {
+                    0 -> { // ВКЛАДКА: РУЧНОЙ ВВОД
+                        item {
+                            OutlinedTextField(
+                                value = explicitPass, 
+                                onValueChange = { explicitPass = it }, 
+                                modifier = Modifier.fillMaxWidth(), 
+                                label = { Text("Введите ваш пароль") },
+                                visualTransformation = PasswordVisualTransformation()
+                            )
+                        }
+                        item { PasswordStrengthMeter(password = explicitPass) }
+                    }
+                    1 -> { // ВКЛАДКА: СЛУЧАЙНЫЙ ГЕНЕРАТОР
+                        item { OutlinedTextField(value = randomLength, onValueChange = { randomLength = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Длина случайного пароля") }) }
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = useUpper, onCheckedChange = { useUpper = it })
+                                Text("ЗАГЛАВНЫЕ БУКВЫ", fontSize = 14.sp)
+                            }
+                        }
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = useDigits, onCheckedChange = { useDigits = it })
+                                Text("Цифры (0-9)", fontSize = 14.sp)
+                            }
+                        }
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = useSpecial, onCheckedChange = { useSpecial = it })
+                                Text("Спецсимволы (%$#@)", fontSize = 14.sp)
+                            }
+                        }
+                        item {
+                            Button(
+                                onClick = { 
+                                    val len = randomLength.toIntOrNull() ?: 16
+                                    explicitPass = generateRandomPassword(len, useUpper, useDigits, useSpecial)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Сгенерировать случайный пароль") }
+                        }
+                        if (explicitPass.isNotEmpty()) {
+                            item { OutlinedTextField(value = explicitPass, onValueChange = {}, modifier = Modifier.fillMaxWidth(), label = { Text("Результат генерации") }, readOnly = true) }
                         }
                     }
-                    item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Длина пароля") }) }
-                    item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Соль") }) }
-                    item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Ротация") }) }
-                } else {
-                    item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Пароль вручную") }) }
+                    { // ВКЛАДКА: МНЕМОКОД AMPG v2
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it })
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("Режим 2-х пользователей", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text("Пароль разделится на две равные части", fontSize = 11.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                        item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text(if (isDualUserMode) "Длина пароля (16, 18 или 20)" else "Длина пароля") }) }
+                        item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Своя соль (необязательно)") }) }
+                        item { OutlinedTextField(value = rotationDate, onValueChange = { rotationDate = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Срок действия (дней: например, 90)") }) }
+                    }
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(service, login, isMnemonic, length.toIntOrNull() ?: 16, salt, rotationDate, explicitPass.takeIf { it.isNotEmpty() }, isDualUserMode) }) { Text("Сохранить") } }
+        confirmButton = {
+            Button(
+                onClick = {
+                    val isMnemonicType = (selectedTab == 2)
+                    val finalLen = when (selectedTab) {
+                        1 -> randomLength.toIntOrNull() ?: 16
+                        else -> length.toIntOrNull() ?: 16
+                    }
+                    val finalExplicit = if (selectedTab == 0 || selectedTab == 1) explicitPass.takeIf { it.isNotEmpty() } else null
+                    
+                    onSave(service, login, isMnemonicType, finalLen, salt, rotationDate, finalExplicit, isDualUserMode)
+                }
+            ) { Text("Сохранить") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
     )
 }
 @Composable
@@ -207,4 +288,20 @@ fun PasswordStrengthMeter(password: String) {
             trackColor = Color.DarkGray
         )
     }
+}
+fun generateRandomPassword(length: Int, useUpper: Boolean, useDigits: Boolean, useSpecial: Boolean): String {
+    val lowerChars = "abcdefghijklmnopqrstuvwxyz"
+    val upperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    val digitChars = "0123456789"
+    val specialChars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    
+    val allowedChars = StringBuilder(lowerChars)
+    if (useUpper) allowedChars.append(upperChars)
+    if (useDigits) allowedChars.append(digitChars)
+    if (useSpecial) allowedChars.append(specialChars)
+    
+    val secureRandom = java.security.SecureRandom()
+    return (1..length)
+        .map { allowedChars[secureRandom.nextInt(allowedChars.length)] }
+        .joinToString("")
 }
