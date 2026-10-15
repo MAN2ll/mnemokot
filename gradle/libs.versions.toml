@@ -15,6 +15,8 @@ sqliteKtx = "2.4.0"
 workManager = "2.9.0"
 crypto = "1.1.0-alpha06"
 junit = "4.13.2"
+zxing = "3.5.3"
+zxing-embedded = "4.3.0"
 
 [libraries]
 # Core AndroidX
@@ -45,6 +47,10 @@ androidx-sqlite-ktx = { group = "androidx.sqlite", name = "sqlite-ktx", version.
 # Background Tasks & Security
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "crypto" }
+
+#ZXing (QR)
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxing-embedded" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
