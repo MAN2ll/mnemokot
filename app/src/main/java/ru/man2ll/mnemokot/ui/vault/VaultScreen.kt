@@ -133,9 +133,27 @@ fun VaultScreen(viewModel: VaultViewModel) {
     }
 }
 @Composable
-fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean, onSelectToggle: () -> Unit, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
+fun AccountItem(
+    account: Account,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onSelectToggle: () -> Unit,
+    onShowPasswordClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    Card(modifier = Modifier.fillMaxWidth().clickable(enabled = isSelectionMode) { onSelectToggle() }, colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)) {
+    
+    // Стейт для отображения диалога QR-кода именно для этой карточки
+    var showQrDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isSelectionMode) { onSelectToggle() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -154,8 +172,65 @@ fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean,
                 }
             }
             if (isSelectionMode) { Checkbox(checked = isSelected, onCheckedChange = { onSelectToggle() }) }
-            else { Row { IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }; IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } } }
+            else { 
+                Row { 
+                    // НОВАЯ КНОПКА: Вызов физической QR-метки
+                    IconButton(onClick = { showQrDialog = true }) { 
+                        Text("📷", fontSize = 16.sp) 
+                    }
+                    IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }
+                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } 
+                } 
+            }
         }
+    }
+
+    // ДИАЛОГ ОТОБРАЖЕНИЯ ФИЗИЧЕСКОЙ МЕТКИ (QR-КОД С БЕЗОПАСНЫМ ИНДЕКСОМ)
+    if (showQrDialog) {
+        val qrBitmap = remember { QrCodeGenerator.generateAccountQr(account.id, account.profileId, account.serviceName) }
+        
+        AlertDialog(
+            onDismissRequest = { showQrDialog = false },
+            title = { Text("Физическая QR-метка", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Метка: MnemoKot 🐾 | ${account.serviceName}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    if (qrBitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = androidx.compose.ui.graphics.asImageBitmap(qrBitmap),
+                            contentDescription = "QR Code",
+                            modifier = Modifier.size(200.dp)
+                        )
+                    } else {
+                        Text("Ошибка генерации графической матрицы", color = MaterialTheme.colorScheme.error)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // КРИТИЧЕСКОЕ ИНФОРМИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ ОБ УРОВНЕ БЕЗОПАСНОСТИ
+                    Surface(
+                        color = Color(021, 32, 24, 255), // Мягкий темно-зеленый фон щита безопасности
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.",
+                            fontSize = 11.sp,
+                            color = Color.LightGray,
+                            modifier = Modifier.padding(8.dp),
+                            lineHeight = 14.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showQrDialog = false }) { Text("Закрыть") }
+            }
+        )
     }
 }
 
