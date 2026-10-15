@@ -2,17 +2,16 @@ package ru.man2ll.mnemokot.core.database.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.sqlite.db.SupportSQLiteOpenHelper
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
-import ru.man2ll.mnemokot.core.database.data.AppDatabase
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
+import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
+import ru.man2ll.mnemokot.core.database.data.db.MnemokotDatabase
 import ru.man2ll.mnemokot.core.database.data.repository.MnemokotRepositoryImpl
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import javax.inject.Singleton
@@ -28,37 +27,25 @@ abstract class DatabaseModule {
     ): MnemokotRepository
 
     companion object {
-        private const val DATABASE_NAME = "mnemokot_secure.db"
-
         @Provides
         @Singleton
-        fun provideAppDatabase(
-            @ApplicationContext context: Context
-        ): AppDatabase {
-            val passphraseBytes = "MnemoKot_Temporary_Secure_Salt_Key_Change_Me".toByteArray(Charsets.UTF_8)
-            val factory: SupportSQLiteOpenHelper.Factory = SupportOpenHelperFactory(passphraseBytes)
-            passphraseBytes.fill(0)
-
+        fun provideDatabase(@ApplicationContext context: Context): MnemokotDatabase {
             return Room.databaseBuilder(
                 context,
-                AppDatabase::class.java,
-                DATABASE_NAME
+                MnemokotDatabase::class.java,
+                "mnemokot.db"
             )
-            .openHelperFactory(factory)
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration() // Позволяет автоматически пересоздать таблицы при изменении версии
             .build()
         }
 
         @Provides
-        @Singleton
-        fun provideProfileDao(database: AppDatabase): ProfileDao {
-            return database.profileDao()
-        }
+        fun provideProfileDao(db: MnemokotDatabase): ProfileDao = db.profileDao()
 
         @Provides
-        @Singleton
-        fun provideAccountDao(database: AppDatabase): AccountDao {
-            return database.accountDao()
-        }
+        fun provideAccountDao(db: MnemokotDatabase): AccountDao = db.accountDao()
+
+        @Provides
+        fun provideMasterSettingsDao(db: MnemokotDatabase): MasterSettingsDao = db.masterSettingsDao()
     }
 }
