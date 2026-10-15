@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,7 +25,6 @@ fun MasterAuthScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
 
-    // Метод инициализации аппаратного сканера отпечатка пальца
     fun showBiometricPrompt() {
         val activity = context as? FragmentActivity ?: return
         val executor = ContextCompat.getMainExecutor(context)
@@ -39,7 +39,7 @@ fun MasterAuthScreen(
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("MnemoKot: Вход по отпечатку")
-            .setSubtitle("Приложите палец к сканеру для разблокировки приложения")
+            .setSubtitle("Приложите палец к сканеру для разблокировки")
             .setNegativeButtonText("Ввести пароль")
             .build()
 
@@ -74,6 +74,7 @@ fun MasterAuthScreen(
         }
     }
 }
+
 @Composable
 fun MasterSetupView(onSave: (String) -> Unit, error: String?) {
     var pass by remember { mutableStateOf("") }
