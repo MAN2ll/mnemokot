@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
@@ -19,7 +18,7 @@ import javax.inject.Inject
 class VaultViewModel @Inject constructor(
     private val repository: MnemokotRepository,
     private val sessionManager: SessionManager,
-    private val cryptoEngine: SecurityCryptoEngine // Внедряем криптодвижок для проверки PIN
+    private val cryptoEngine: SecurityCryptoEngine
 ) : ViewModel() {
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
@@ -28,11 +27,15 @@ class VaultViewModel @Inject constructor(
     private val _calculatedPassword = MutableStateFlow<String?>(null)
     val calculatedPassword: StateFlow<String?> = _calculatedPassword.asStateFlow()
 
-    private val _pinVerificationSuccess = MutableStateFlow(false)
-    val pinVerificationSuccess: StateFlow<Boolean> = _pinVerificationSuccess.asStateFlow()
-
     private val _vaultError = MutableStateFlow<String?>(null)
     val vaultError: StateFlow<String?> = _vaultError.asStateFlow()
+
+    // СОСТОЯНИЯ ДЛЯ РЕЖИМА ВЫБОРОЧНОЙ РОТАЦИИ ПАРОЛЕЙ (ЧЕКБОКСЫ)
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+
+    private val _selectedAccountIds = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedAccountIds: StateFlow<Set<Long>> = _selectedAccountIds.asStateFlow()
 
     init {
         observeActiveProfile()
@@ -47,12 +50,13 @@ class VaultViewModel @Inject constructor(
                     }
                 } else {
                     _accounts.value = emptyList()
+                    cancelSelectionMode()
                 }
             }
         }
     }
 
-    // Метод проверки PIN-кода профиля перед показом пароля
+    // Безопасная проверка PIN-кода профиля перед раскрытием ("глаз")
     fun verifyProfilePinForAction(pin: String, onSuccessAction: () -> Unit) {
         val profileId = sessionManager.activeProfileId.value ?: return
         _vaultError.value = null
@@ -65,37 +69,27 @@ class VaultViewModel @Inject constructor(
 
             val isValid = repository.verifyPin(profileId, testHash)
             if (isValid) {
-                _pinVerificationSuccess.value = true
                 onSuccessAction()
             } else {
-                _pinVerificationSuccess.value = false
                 _vaultError.value = "Неверный PIN-код профиля"
             }
         }
     }
 
-    fun clearVaultError() {
-        _vaultError.value = null
-    }
-
-    fun resetPinVerification() {
-        _pinVerificationSuccess.value = false
-    }
-
+    // Сохранение нового аккаунта с расчетом жизненного цикла (expiresAt)
     fun onAddAccount(
         service: String, 
         login: String, 
         isMnemonic: Boolean, 
         len: Int, 
         salt: String, 
-        daysToLive: Int, // Заменили старую строку на количество дней жизни пароля
+        daysToLive: Int, 
         explicit: String?, 
         isDual: Boolean
     ) {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val currentTime = System.currentTimeMillis()
-            // Если выбрано 0 дней — пароль вечный (expiresAt = 0), иначе прибавляем дни к текущему времени
             val expiresAtTime = if (daysToLive > 0) {
                 currentTime + (daysToLive.toLong() * 24 * 60 * 60 * 1000)
             } else {
@@ -119,7 +113,48 @@ class VaultViewModel @Inject constructor(
             repository.saveAccount(account)
         }
     }
-    
+
+    // Логика переключения чекбоксов в режиме ротации
+    fun toggleAccountSelection(accountId: Long) {
+        val currentSet = _selectedAccountIds.value
+        _selectedAccountIds.value = if (currentSet.contains(accountId)) {
+            currentSet - accountId
+        } else {
+            currentSet + accountId
+        }
+    }
+
+    fun startSelectionMode() {
+        _isSelectionMode.value = true
+        _selectedAccountIds.value = emptySet()
+        _vaultError.value = null
+    }
+
+    fun cancelSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedAccountIds.value = emptySet()
+        _vaultError.value = null
+    }
+
+    // Запуск перемешивания паролей для отмеченных чекбоксами записей
+    fun runSelectedPasswordRotation() {
+        val idsToRotate = _selectedAccountIds.value.toList()
+        if (idsToRotate.size < 2) {
+            _vaultError.value = "Отметьте минимум 2 аккаунта для перемешивания"
+            return
+        }
+        
+        viewModelScope.launch {
+            val (success, reportMessage) = repository.rotateSelectedPasswords(idsToRotate)
+            if (success) {
+                cancelSelectionMode()
+                _vaultError.value = reportMessage // Выводим диалог отчета или тост
+            } else {
+                _vaultError.value = reportMessage
+            }
+        }
+    }
+
     fun onCalculatePassword(accountId: Long, phrase: String?) {
         viewModelScope.launch {
             val passChars = repository.getPasswordForAccount(accountId, phrase)
@@ -130,11 +165,7 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    fun clearCalculatedPassword() { 
-        _calculatedPassword.value = null 
-    }
-    
-    fun onDeleteAccount(id: Long) { 
-        viewModelScope.launch { repository.deleteAccount(id) } 
-    }
+    fun clearCalculatedPassword() { _calculatedPassword.value = null }
+    fun clearVaultError() { _vaultError.value = null }
+    fun onDeleteAccount(id: Long) { viewModelScope.launch { repository.deleteAccount(id) } }
 }
