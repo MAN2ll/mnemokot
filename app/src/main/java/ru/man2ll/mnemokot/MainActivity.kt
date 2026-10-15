@@ -5,12 +5,22 @@ import androidx.activity.viewModels
 import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.ui.auth.AuthScreen
 import ru.man2ll.mnemokot.ui.auth.AuthViewModel
@@ -53,15 +63,102 @@ class MainActivity : FragmentActivity() {
 
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     if (!isMasterAuthorized) {
-                        // Рубеж №1: Глобальный Мастер-пароль / Отпечаток
                         MasterAuthScreen(viewModel = masterViewModel, onAccessGranted = { isMasterAuthorized = true })
                     } else if (!isAuthorized) {
-                        // Рубеж №2: Внутрисейфовые изолированные профили
                         AuthScreen(viewModel = authViewModel, onAuthSuccess = {})
                     } else {
-                        // ИСПРАВЛЕНИЕ: Вместо черного окна запускаем полноценный контейнер журналов паролей
                         MainNavigationDrawerContainer(vaultViewModel, auditViewModel, backupViewModel, sessionManager)
                     }
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainNavigationDrawerContainer(
+    vaultViewModel: VaultViewModel,
+    auditViewModel: AuditViewModel,
+    backupViewModel: BackupViewModel,
+    sessionManager: SessionManager
+) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    var currentScreen by remember { mutableStateOf("vault") }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("MnemoKot 🐾", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary)
+                HorizontalDivider()
+                
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Shield, null) },
+                    label = { Text("Журнал паролей") },
+                    selected = currentScreen == "vault",
+                    onClick = { currentScreen = "vault"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Lock, null) },
+                    label = { Text("Аудит безопасности") },
+                    selected = currentScreen == "audit",
+                    onClick = { currentScreen = "audit"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Save, null) },
+                    label = { Text("Резервные копии") },
+                    selected = currentScreen == "backup",
+                    onClick = { currentScreen = "backup"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                )
+                
+                Spacer(modifier = Modifier.weight(1f))
+                HorizontalDivider()
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.error) },
+                    label = { Text("Сменить профиль", color = MaterialTheme.colorScheme.error) },
+                    selected = false,
+                    onClick = { sessionManager.logout() },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = when (currentScreen) {
+                                "vault" -> "Журнал сейфа"
+                                "audit" -> "Панель рисков"
+                                else -> "Резервное копирование"
+                            },
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Меню")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                when (currentScreen) {
+                    "vault" -> VaultScreen(viewModel = vaultViewModel)
+                    "audit" -> AuditScreen(viewModel = auditViewModel)
+                    "backup" -> BackupScreen(viewModel = backupViewModel)
                 }
             }
         }
