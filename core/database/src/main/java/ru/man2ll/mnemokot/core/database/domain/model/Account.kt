@@ -10,6 +10,8 @@ data class Account(
     val salt: String,
     val rotationDate: String,
     val explicitPassword: String?,
-    // Переносим флаг на уровень бизнес-логики
-    val isDualUserMode: Boolean = false
+    val isDualUserMode: Boolean = false,
+    // Добавляем новые метрики на уровень Domain
+    val createdAt: Long = System.currentTimeMillis(),
+    val expiresAt: Long = 0L
 )

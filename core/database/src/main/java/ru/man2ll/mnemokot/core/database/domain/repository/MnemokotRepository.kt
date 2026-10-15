@@ -22,4 +22,5 @@ interface MnemokotRepository {
     suspend fun saveAccount(account: Account)
     suspend fun deleteAccount(id: Long)
     suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray
+    suspend fun rotateSelectedPasswords(accountIds: List<Long>): Pair<Boolean, String>
 }

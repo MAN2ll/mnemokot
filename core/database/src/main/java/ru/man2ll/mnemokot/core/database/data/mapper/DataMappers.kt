@@ -23,7 +23,10 @@ fun AccountEntity.toDomain() = Account(
     salt = salt,
     rotationDate = rotationDate,
     explicitPassword = encryptedPassword,
-    isDualUserMode = isDualUserMode
+    isDualUserMode = isDualUserMode,
+    // Маппинг новых полей жизненного цикла
+    createdAt = createdAt,
+    expiresAt = expiresAt
 )
 
 fun Account.toEntity() = AccountEntity(
@@ -36,5 +39,9 @@ fun Account.toEntity() = AccountEntity(
     salt = salt,
     rotationDate = rotationDate,
     encryptedPassword = explicitPassword,
-    isDualUserMode = isDualUserMode
+    isDualUserMode = isDualUserMode,
+    // Маппинг новых полей жизненного цикла
+    createdAt = createdAt,
+    expiresAt = expiresAt,
+    updatedAt = System.currentTimeMillis()
 )
