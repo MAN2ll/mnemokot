@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://github.com">
+<manifest xmlns:android="http://android.com"
+    xmlns:tools="http://android.com">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -38,12 +38,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Добавление кастомного портретного оффлайн-сканера QR-меток -->
+        <!-- ФИКС ОШИБКИ: Заменили тему AppCompat на стандартную системную тему без ActionBar -->
         <activity
             android:name=".ui.vault.QrScannerActivity"
             android:screenOrientation="portrait"
             android:stateNotNeeded="true"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
             android:windowSoftInputMode="stateAlwaysHidden" />
 
         <provider
