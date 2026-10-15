@@ -99,7 +99,7 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Журнал паролей") },
                     selected = currentScreen == "vault",
                     onClick = { currentScreen = "vault"; scope.launch { drawerState.close() } },
-                    shape = NavigationDrawerItemDefaults.itemShape,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 NavigationDrawerItem(
@@ -107,7 +107,7 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Аудит безопасности") },
                     selected = currentScreen == "audit",
                     onClick = { currentScreen = "audit"; scope.launch { drawerState.close() } },
-                    shape = NavigationDrawerItemDefaults.itemShape,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 NavigationDrawerItem(
@@ -115,7 +115,7 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Резервные копии") },
                     selected = currentScreen == "backup",
                     onClick = { currentScreen = "backup"; scope.launch { drawerState.close() } },
-                    shape = NavigationDrawerItemDefaults.itemShape,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 
@@ -126,7 +126,7 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Сменить профиль", color = MaterialTheme.colorScheme.error) },
                     selected = false,
                     onClick = { sessionManager.logout() },
-                    shape = NavigationDrawerItemDefaults.itemShape,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
