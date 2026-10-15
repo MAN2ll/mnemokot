@@ -2,8 +2,7 @@ package ru.man2ll.mnemokot.core.crypto.data
 
 import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
-import java.security.MessageRandom
-import java.security.SecureRandom
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,27 +30,18 @@ class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
     override fun generateFromMnemonic(phrase: String, options: MnemonicOptions): CharArray {
         if (phrase.isBlank()) return charArrayOf()
         
-        // Разбираем фразу на отдельные чистые слова
         val words = phrase.lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
         if (words.isEmpty()) return charArrayOf()
 
-        // По умолчанию используем стиль трансформации на основе метаданных (options.rotationDate)
-        // Если указано "1" - Раскладка, "2" - ГОСТ + Leet, иначе - Чистый ГОСТ CamelCase
+        // 1 - Раскладка клавиатуры, 2 - ГОСТ + Leet, иначе - Чистый ГОСТ CamelCase
         val resultString = when (options.rotationDate) {
             "1" -> transformKeyboardLayout(words)
             "2" -> transformGostWithLeet(words)
             else -> transformPureGost(words)
         }
 
-        // Подгоняем под жесткую длину пользователя с помощью детерминированного SHA-256
         val finalPassword = adjustToRequiredLength(resultString, options.length)
-        
-        // Обрабатываем Dual-User Mode (Разделение секрета пополам)
-        return if (options.isDualUserMode) {
-            finalPassword.toCharArray()
-        } else {
-            finalPassword.toCharArray()
-        }
+        return finalPassword.toCharArray()
     }
 
     private fun transformPureGost(words: List<String>): String {
@@ -70,7 +60,6 @@ class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
 
     private fun transformGostWithLeet(words: List<String>): String {
         val pureGost = transformPureGost(words)
-        // Кастомные мутации Leet-speak, сохраняющие визуальные очертания букв
         return pureGost
             .replace('i', '1').replace('I', '1')
             .replace('e', '3').replace('E', '3')
@@ -83,8 +72,7 @@ class PasswordGeneratorImpl @Inject constructor() : PasswordGenerator {
         if (base.length >= targetLength) {
             return base.substring(0, targetLength)
         }
-        // Если парольная фраза короче нужной длины — детерминированно добиваем её хэшем SHA-256
-        val md = java.security.MessageDigest.getInstance("SHA-256")
+        val md = MessageDigest.getInstance("SHA-256")
         val hashBytes = md.digest(base.toByteArray(Charsets.UTF_8))
         val hexAppend = hashBytes.joinToString("") { "%02x".format(it) }
         val combined = base + hexAppend
