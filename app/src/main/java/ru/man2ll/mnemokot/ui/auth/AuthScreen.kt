@@ -215,19 +215,21 @@ fun EnterPinView(
         }
         
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "Введите PIN-код (от 4 до 6 цифр)", fontSize = 14.sp, color = Color.Gray)
+        Text(text = "Введите PIN-код", fontSize = 14.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Шкала на 6 точек без ошибок синтаксиса
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            repeat(6) { index ->
-                val isFilled = index < pinInput.length
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(if (isFilled) MaterialTheme.colorScheme.primary else Color.DarkGray)
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(16.dp)) {
+            if (pinInput.isEmpty()) {
+                Text("-", fontSize = 16.sp, color = Color.DarkGray, fontWeight = FontWeight.Bold)
+            } else {
+                repeat(pinInput.length) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
         }
 
@@ -269,10 +271,10 @@ fun EnterPinView(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onConfirmClick,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
