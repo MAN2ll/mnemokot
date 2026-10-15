@@ -11,7 +11,7 @@ import dagger.hilt.components.SingletonComponent
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
-import ru.man2ll.mnemokot.core.database.data.db.MnemokotDatabase
+import ru.man2ll.mnemokot.core.database.data.MnemokotDatabase
 import ru.man2ll.mnemokot.core.database.data.repository.MnemokotRepositoryImpl
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import javax.inject.Singleton
@@ -35,7 +35,7 @@ abstract class DatabaseModule {
                 MnemokotDatabase::class.java,
                 "mnemokot.db"
             )
-            .fallbackToDestructiveMigration() // Позволяет автоматически пересоздать таблицы при изменении версии
+            .fallbackToDestructiveMigration()
             .build()
         }
 
