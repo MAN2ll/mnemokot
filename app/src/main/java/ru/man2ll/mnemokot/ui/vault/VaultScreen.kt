@@ -3,6 +3,7 @@ package ru.man2ll.mnemokot.ui.vault
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -13,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.man2ll.mnemokot.core.database.domain.model.Account
@@ -22,8 +25,15 @@ import ru.man2ll.mnemokot.core.database.domain.model.Account
 fun VaultScreen(viewModel: VaultViewModel) {
     val accounts by viewModel.accounts.collectAsState()
     val calculatedPassword by viewModel.calculatedPassword.collectAsState()
+    val vaultError by viewModel.vaultError.collectAsState()
     
     var showAddDialog by remember { mutableStateOf(false) }
+    
+    // Стейты для авторизации действия по PIN-коду
+    var showPinDialogForAccountId by remember { mutableStateOf<Long?>(null) }
+    var pinVerificationInput by remember { mutableStateOf("") }
+    
+    // Стейты для последующего раскрытия мнемофразы (если аккаунт — AMPG v2)
     var showPhraseDialogForAccountId by remember { mutableStateOf<Long?>(null) }
     var mnemonicPhraseInput by remember { mutableStateOf("") }
     var isCurrentAccountDualMode by remember { mutableStateOf(false) }
@@ -66,8 +76,10 @@ fun VaultScreen(viewModel: VaultViewModel) {
                         AccountItem(
                             account = account,
                             onShowPasswordClick = { 
-                                isCurrentAccountDualMode = account.isDualUserMode
-                                showPhraseDialogForAccountId = account.id 
+                                viewModel.clearVaultError()
+                                pinVerificationInput = ""
+                                // Сначала триггерим запрос PIN-кода профиля
+                                showPinDialogForAccountId = account.id 
                             },
                             onDeleteClick = { viewModel.onDeleteAccount(account.id) }
                         )
@@ -75,7 +87,68 @@ fun VaultScreen(viewModel: VaultViewModel) {
                 }
             }
 
-            // Диалог отображения вычисленного пароля (С поддержкой Dual-User разделения)
+            // 1. ДИАЛОГ ЗАПРОСА PIN-КОДА ПРОФИЛЯ (Защита "Глаза")
+            showPinDialogForAccountId?.let { accountId ->
+                AlertDialog(
+                    onDismissRequest = { 
+                        showPinDialogForAccountId = null
+                        pinVerificationInput = ""
+                        viewModel.clearVaultError()
+                    },
+                    title = { Text("Подтверждение операции") },
+                    text = {
+                        Column {
+                            Text("Введите PIN-код текущего профиля для доступа к паролю:", fontSize = 14.sp, color = Color.Gray)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = pinVerificationInput,
+                                onValueChange = { if (it.all { ch -> ch.isDigit() } && it.length <= 6) pinVerificationInput = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("PIN-код профиля") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = vaultError != null
+                            )
+                            if (vaultError != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(vaultError!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val targetAccount = accounts.firstOrNull { it.id == accountId }
+                                viewModel.verifyProfilePinForAction(pinVerificationInput) {
+                                    // Callback выполняется только при успешном PIN
+                                    showPinDialogForAccountId = null
+                                    pinVerificationInput = ""
+                                    
+                                    if (targetAccount != null) {
+                                        if (targetAccount.isMnemonic) {
+                                            // Если мнемонический — запрашиваем секретную фразу
+                                            isCurrentAccountDualMode = targetAccount.isDualUserMode
+                                            showPhraseDialogForAccountId = targetAccount.id
+                                        } else {
+                                            // Если явный — сразу вычисляем (дешифруем)
+                                            viewModel.onCalculatePassword(accountId, null)
+                                        }
+                                    }
+                                }
+                            }
+                        ) { Text("Подтвердить") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { 
+                            showPinDialogForAccountId = null
+                            pinVerificationInput = ""
+                            viewModel.clearVaultError()
+                        }) { Text("Отмена") }
+                    }
+                )
+            }
+
+            // 2. Диалог отображения вычисленного пароля (С поддержкой Dual-User разделения)
             calculatedPassword?.let { password ->
                 AlertDialog(
                     onDismissRequest = { viewModel.clearCalculatedPassword() },
@@ -96,268 +169,45 @@ fun VaultScreen(viewModel: VaultViewModel) {
                                 val part2 = password.substring(halfLength)
                                 
                                 Text("Часть 1 (Пользователь А):", fontSize = 12.sp, color = Color.Gray)
-                                Text(
-                                    text = part1, 
-                                    fontSize = 20.sp, 
-                                    fontWeight = FontWeight.Bold, 
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Text(part1, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text("Часть 2 (Пользователь Б):", fontSize = 12.sp, color = Color.Gray)
-                                Text(
-                                    text = part2, 
-                                    fontSize = 20.sp, 
-                                    fontWeight = FontWeight.Bold, 
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
+                                Text(part2, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                             } else {
-                                Text(
-                                    text = password, 
-                                    fontSize = 22.sp, 
-                                    fontWeight = FontWeight.Bold, 
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Text(password, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },
                     confirmButton = {
-                        Button(onClick = { viewModel.clearCalculatedPassword() }) { 
-                            Text("Закрыть") 
-                        }
+                        Button(onClick = { viewModel.clearCalculatedPassword() }) { Text("Закрыть") }
                     }
                 )
             }
-
-            // Диалог запроса мнемофразы для расчета пароля
-            showPhraseDialogForAccountId?.let { accountId ->
-                AlertDialog(
-                    onDismissRequest = { 
-                        showPhraseDialogForAccountId = null
-                        mnemonicPhraseInput = "" 
-                    },
-                    title = { Text("Ввод мнемонической фразы") },
-                    text = {
-                        OutlinedTextField(
-                            value = mnemonicPhraseInput,
-                            onValueChange = { mnemonicPhraseInput = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Введите секретную фразу") }
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                viewModel.onCalculatePassword(
-                                    accountId = accountId, 
-                                    phrase = mnemonicPhraseInput.takeIf { it.isNotEmpty() }
-                                )
-                                showPhraseDialogForAccountId = null
-                                mnemonicPhraseInput = ""
-                            }
-                        ) { 
-                            Text("Вычислить") 
-                        }
-                    }
-                )
-            }
-
-            // Диалог добавления новой записи
-            if (showAddDialog) {
-                AddAccountDialog(
-                    onDismiss = { showAddDialog = false },
-                    onSave = { service, login, isMnemonic, len, salt, date, explicit, isDual ->
-                        viewModel.onAddAccount(service, login, isMnemonic, len, salt, date, explicit, isDual)
-                        showAddDialog = false
-                    }
-                )
-            }
-        }
-    }
-}
-@Composable
-fun AccountItem(
-    account: Account, 
-    onShowPasswordClick: () -> Unit, 
-    onDeleteClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(), 
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(), 
-            verticalAlignment = Alignment.CenterVertically, 
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = account.serviceName, 
-                    fontSize = 18.sp, 
-                    fontWeight = FontWeight.Bold, 
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = account.login, 
-                    fontSize = 14.sp, 
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(if (account.isMnemonic) "AMPG v2" else "Стандартный") }
-                    )
-                    if (account.isDualUserMode) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("2 Пользователя") }
-                        )
-                    }
-                }
-            }
-            Row {
-                IconButton(onClick = onShowPasswordClick) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility, 
-                        contentDescription = "Показать пароль", 
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        imageVector = Icons.Default.Delete, 
-                        contentDescription = "Удалить", 
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AddAccountDialog(
-    onDismiss: () -> Unit, 
-    onSave: (String, String, Boolean, Int, String, String, String?, Boolean) -> Unit
-) {
-    var service by remember { mutableStateOf("") }
-    var login by remember { mutableStateOf("") }
-    var isMnemonic by remember { mutableStateOf(true) }
-    var length by remember { mutableStateOf("16") }
-    var salt by remember { mutableStateOf("") }
-    var rotationDate by remember { mutableStateOf("") }
-    var explicitPass by remember { mutableStateOf("") }
-    var isDualUserMode by remember { mutableStateOf(false) }
-
+            // 3. Диалог запроса мнемофразы для расчета пароля
+showPhraseDialogForAccountId?.let { accountId ->
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Новая учетная запись") },
+        onDismissRequest = { 
+            showPhraseDialogForAccountId = null
+            mnemonicPhraseInput = "" 
+        },
+        title = { Text("Ввод мнемонической фразы") },
         text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { 
-                    OutlinedTextField(
-                        value = service, 
-                        onValueChange = { service = it }, 
-                        modifier = Modifier.fillMaxWidth(), 
-                        label = { Text("Название сервиса (например, Gmail)") }
-                    ) 
-                }
-                item { 
-                    OutlinedTextField(
-                        value = login, 
-                        onValueChange = { login = it }, 
-                        modifier = Modifier.fillMaxWidth(), 
-                        label = { Text("Логин / Email") }
-                    ) 
-                }
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = isMnemonic, onCheckedChange = { isMnemonic = it })
-                        Text("Использовать мнемокод AMPG v2")
-                    }
-                }
-                if (isMnemonic) {
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically, 
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it })
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Режим 2-х пользователей", fontWeight = FontWeight.Medium)
-                                Text("Пароль разделится на две равные части", fontSize = 11.sp, color = Color.Gray)
-                            }
-                        }
-                    }
-                    item { 
-                        OutlinedTextField(
-                            value = length, 
-                            onValueChange = { length = it }, 
-                            modifier = Modifier.fillMaxWidth(), 
-                            label = { 
-                                Text(
-                                    text = if (isDualUserMode) {
-                                        "Длина пароля (16, 18 или 20)"
-                                    } else {
-                                        "Длина пароля"
-                                    }
-                                ) 
-                            }
-                        ) 
-                    }
-                    item { 
-                        OutlinedTextField(
-                            value = salt, 
-                            onValueChange = { salt = it }, 
-                            modifier = Modifier.fillMaxWidth(), 
-                            label = { Text("Своя соль (необязательно)") }
-                        ) 
-                    }
-                    item { 
-                        OutlinedTextField(
-                            value = rotationDate, 
-                            onValueChange = { rotationDate = it }, 
-                            modifier = Modifier.fillMaxWidth(), 
-                            label = { Text("Дата ротации ММГГ (например, 1026)") }
-                        ) 
-                    }
-                } else {
-                    item { 
-                        OutlinedTextField(
-                            value = explicitPass, 
-                            onValueChange = { explicitPass = it }, 
-                            modifier = Modifier.fillMaxWidth(), 
-                            label = { Text("Введите явный пароль") }
-                        ) 
-                    }
-                }
-            }
+            OutlinedTextField(
+                value = mnemonicPhraseInput,
+                onValueChange = { mnemonicPhraseInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Введите секретную фразу") }
+            )
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(
-                        service, 
-                        login, 
-                        isMnemonic, 
-                        length.toIntOrNull() ?: 16, 
-                        salt, 
-                        rotationDate, 
-                        explicitPass.takeIf { it.isNotEmpty() }, 
-                        isDualUserMode
-                    )
+                    val phraseArg = mnemonicPhraseInput.takeIf { it.isNotEmpty() }
+                    viewModel.onCalculatePassword(accountId, phraseArg)
+                    showPhraseDialogForAccountId = null
+                    mnemonicPhraseInput = ""
                 }
-            ) { 
-                Text("Сохранить") 
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { 
-                Text("Отмена") 
-            }
+            ) { Text("Вычислить") }
         }
     )
 }
