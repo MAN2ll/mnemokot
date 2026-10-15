@@ -99,21 +99,24 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Журнал паролей") },
                     selected = currentScreen == "vault",
                     onClick = { currentScreen = "vault"; scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                    shape = NavigationDrawerItemDefaults.itemShape,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Lock, null) },
                     label = { Text("Аудит безопасности") },
                     selected = currentScreen == "audit",
                     onClick = { currentScreen = "audit"; scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                    shape = NavigationDrawerItemDefaults.itemShape,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Save, null) },
                     label = { Text("Резервные копии") },
                     selected = currentScreen == "backup",
                     onClick = { currentScreen = "backup"; scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                    shape = NavigationDrawerItemDefaults.itemShape,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 
                 Spacer(modifier = Modifier.weight(1f))
@@ -123,7 +126,8 @@ fun MainNavigationDrawerContainer(
                     label = { Text("Сменить профиль", color = MaterialTheme.colorScheme.error) },
                     selected = false,
                     onClick = { sessionManager.logout() },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.itemShape)
+                    shape = NavigationDrawerItemDefaults.itemShape,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
