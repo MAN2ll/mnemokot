@@ -1,9 +1,9 @@
 package ru.man2ll.mnemokot
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.activity.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,6 +24,8 @@ import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.ui.auth.AuthScreen
 import ru.man2ll.mnemokot.ui.auth.AuthViewModel
+import ru.man2ll.mnemokot.ui.auth.MasterAuthScreen
+import ru.man2ll.mnemokot.ui.auth.MasterAuthViewModel
 import ru.man2ll.mnemokot.ui.theme.MnemoKotTheme
 import ru.man2ll.mnemokot.ui.vault.VaultScreen
 import ru.man2ll.mnemokot.ui.vault.VaultViewModel
@@ -33,8 +36,9 @@ import ru.man2ll.mnemokot.ui.backup.BackupViewModel
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() { // Изменили для аппаратной биометрии
 
+    private val masterViewModel: MasterAuthViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
     private val vaultViewModel: VaultViewModel by viewModels()
     private val auditViewModel: AuditViewModel by viewModels()
@@ -54,24 +58,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MnemoKotTheme {
+                var isMasterAuthorized by remember { mutableStateOf(false) }
                 val isAuthorized by sessionManager.isAuthorized.collectAsState()
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    if (!isAuthorized) {
-                        AuthScreen(
-                            viewModel = authViewModel, 
-                            onAuthSuccess = {}
-                        )
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    if (!isMasterAuthorized) {
+                        // Рубеж №1: Глобальный Мастер-пароль / Отпечаток
+                        MasterAuthScreen(viewModel = masterViewModel, onAccessGranted = { isMasterAuthorized = true })
+                    } else if (!isAuthorized) {
+                        // Рубеж №2: Внутрисейфовые изолированные профили
+                        AuthScreen(viewModel = authViewModel, onAuthSuccess = {})
                     } else {
-                        MainNavigationDrawerContainer(
-                            vaultViewModel = vaultViewModel,
-                            auditViewModel = auditViewModel,
-                            backupViewModel = backupViewModel,
-                            sessionManager = sessionManager
-                        )
+                        MainNavigationDrawerContainer(vaultViewModel, auditViewModel, backupViewModel, sessionManager)
                     }
                 }
             }
