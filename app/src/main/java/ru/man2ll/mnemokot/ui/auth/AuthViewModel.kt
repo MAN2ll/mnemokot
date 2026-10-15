@@ -79,7 +79,6 @@ class AuthViewModel @Inject constructor(
         _pinInput.value = ""
         _errorMessage.value = null
         sessionManager.logout()
-        // Принудительно заставляем перечитать базу, возвращаясь к списку
         viewModelScope.launch {
             val profiles = repository.getProfiles().first()
             if (profiles.isNotEmpty()) {
@@ -111,14 +110,15 @@ class AuthViewModel @Inject constructor(
         if (key == "C") {
             if (currentPin.isNotEmpty()) _pinInput.value = currentPin.dropLast(1)
         } else {
-            // Аппаратно поддерживаем ввод PIN-кода переменной длины до 6 символов
-            if (currentPin.length < 6) _pinInput.value = currentPin + key
-        }
-
-        // Проверяем PIN, если введено от 4 до 6 символов и пользователь сделал паузу, 
-        // либо если введено ровно 6 символов (максимальный лимит)
-        if (_pinInput.value.length == 6) {
-            verifyPin()
+            // ФИКС: Даем свободно вводить символы до 6 штук без автоматической отправки!
+            if (currentPin.length < 6) {
+                val newPin = currentPin + key
+                _pinInput.value = newPin
+                // Автоматически отправляем на верификацию ТОЛЬКО если ввели максимум (6 символов)
+                if (newPin.length == 6) {
+                    verifyPin()
+                }
+            }
         }
     }
     
