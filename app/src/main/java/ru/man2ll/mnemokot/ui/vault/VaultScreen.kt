@@ -1,6 +1,7 @@
 package ru.man2ll.mnemokot.ui.vault
 
 import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +42,20 @@ fun VaultScreen(viewModel: VaultViewModel) {
     var mnemonicPhraseInput by remember { mutableStateOf("") }
     var isCurrentAccountDualMode by remember { mutableStateOf(false) }
 
+    // Контекстный оффлайн-сканер: обрабатывает считанную ссылку и ищет ID записи
+    val barcodeLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val contents = result.contents
+        if (contents != null && contents.startsWith("mnemokot://vault/account")) {
+            val uri = android.net.Uri.parse(contents)
+            val accountId = uri.getQueryParameter("id")?.toLongOrNull()
+            if (accountId != null) {
+                viewModel.clearVaultError()
+                pinVerificationInput = ""
+                showPinDialogForAccountId = accountId
+            }
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             if (!isSelectionMode) {
@@ -49,18 +66,31 @@ fun VaultScreen(viewModel: VaultViewModel) {
         }
     ) { p ->
         Column(modifier = Modifier.padding(p).fillMaxSize()) {
-            if (accounts.isNotEmpty()) {
-                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondaryContainer, tonalElevation = 2.dp) {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        if (!isSelectionMode) {
-                            Text("Паролей в сейфе: ${accounts.size}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Button(onClick = { viewModel.startSelectionMode() }) { Text("Выбрать для ротации", fontSize = 12.sp) }
-                        } else {
-                            Text("Выбрано: ${selectedAccountIds.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { viewModel.cancelSelectionMode() }) { Text("Отмена") }
-                                Button(onClick = { viewModel.runSelectedPasswordRotation() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Перемешать", fontSize = 12.sp) }
-                            }
+            
+            // ВЕРХНЯЯ ПАНЕЛЬ С КНОПКОЙ АКТИВАЦИИ АППАРАТНОЙ КАМЕРЫ СКАНИРОВАНИЯ
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondaryContainer, tonalElevation = 2.dp) {
+                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    if (!isSelectionMode) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Кнопка включения локального оффлайн-сканера меток
+                            Button(onClick = { 
+                                val options = ScanOptions().apply {
+                                    setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                    setPrompt("Наведите камеру на физическую метку MnemoKot")
+                                    setCameraId(0)
+                                    setBeepEnabled(true)
+                                    setBarcodeImageEnabled(false)
+                                    setCaptureActivity(QrScannerActivity::class.java)
+                                }
+                                barcodeLauncher.launch(options)
+                            }) { Text("📷 Сканировать метку", fontSize = 12.sp) }
+                        }
+                        Button(onClick = { viewModel.startSelectionMode() }) { Text("Выбрать для ротации", fontSize = 12.sp) }
+                    } else {
+                        Text("Выбрано: ${selectedAccountIds.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { viewModel.cancelSelectionMode() }) { Text("Отмена") }
+                            Button(onClick = { viewModel.runSelectedPasswordRotation() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Перемешать", fontSize = 12.sp) }
                         }
                     }
                 }
@@ -75,8 +105,9 @@ fun VaultScreen(viewModel: VaultViewModel) {
                         }
                     }
                 }
+                
                 vaultError?.let { report ->
-                    AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Аудит безопасности ротации", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("Принять риски и закрыть") } })
+                    AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Системное уведомление", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("Принять и закрыть") } })
                 }
                 showPinDialogForAccountId?.let { id ->
                     AlertDialog(
@@ -134,6 +165,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
         }
     }
 }
+
 @Composable
 fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean, onSelectToggle: () -> Unit, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
