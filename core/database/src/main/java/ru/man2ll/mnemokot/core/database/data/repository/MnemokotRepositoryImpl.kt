@@ -108,25 +108,21 @@ class MnemokotRepositoryImpl @Inject constructor(
         val reportBuilder = StringBuilder("Результат аудита перед ротацией:\n")
 
         val rotatedEntities = entities.mapIndexed { index, currentAccount ->
-            // Циклический сдвиг: берем параметры у следующего в выбранном списке
             val nextIndex = (index + 1) % entities.size
             val donorAccount = entities[nextIndex]
 
-            // Проверка риска длины: если донорский пароль короче, чем требовалось текущему сервису
             if (donorAccount.passwordLength < currentAccount.passwordLength) {
                 hasLengthWarning = true
                 reportBuilder.append("⚠ ${currentAccount.serviceName}: новый пароль короче исходного (${donorAccount.passwordLength} < ${currentAccount.passwordLength})\n")
             }
 
             if (currentAccount.isMnemonic) {
-                // Ротация AMPG v2 через модификацию детерминированной соли донора
                 currentAccount.copy(
                     salt = if (donorAccount.salt.isBlank()) "Rot_" + donorAccount.id else "Rot_" + donorAccount.salt,
-                    expiresAt = System.currentTimeMillis() + (90L * 24 * 60 * 60 * 1000), // Обновляем срок на 90 дней
+                    expiresAt = System.currentTimeMillis() + (90L * 24 * 60 * 60 * 1000),
                     updatedAt = System.currentTimeMillis()
                 )
             } else {
-                // Ротация явных паролей сдвигом шифрованных строк
                 currentAccount.copy(
                     encryptedPassword = donorAccount.encryptedPassword,
                     expiresAt = System.currentTimeMillis() + (90L * 24 * 60 * 60 * 1000),
@@ -135,7 +131,6 @@ class MnemokotRepositoryImpl @Inject constructor(
             }
         }
 
-        // Записываем пачку изменений в базу данных
         accountDao.updateAccountsList(rotatedEntities)
 
         val finalMessage = if (hasLengthWarning) {
