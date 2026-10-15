@@ -1,5 +1,6 @@
 package ru.man2ll.mnemokot.ui.vault
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -73,7 +75,6 @@ fun VaultScreen(viewModel: VaultViewModel) {
                         }
                     }
                 }
-                
                 vaultError?.let { report ->
                     AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Аудит безопасности ротации", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("Принять риски и закрыть") } })
                 }
@@ -168,7 +169,7 @@ fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean,
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text("Метка: MnemoKot 🐾 | ${account.serviceName}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    if (qrBitmap != null) { androidx.compose.foundation.Image(bitmap = androidx.compose.ui.graphics.asImageBitmap(qrBitmap), contentDescription = "QR Code", modifier = Modifier.size(200.dp)) }
+                    if (qrBitmap != null) { androidx.compose.foundation.Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.size(200.dp)) }
                     else { Text("Ошибка матрицы", color = MaterialTheme.colorScheme.error) }
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(color = Color(0xFF1B2A1C), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -195,7 +196,7 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
     var isDualUserMode by remember { mutableStateOf(false) }
     var daysMenuExpanded by remember { mutableStateOf(false) }
     val daysOptions = listOf(0 to "Вечный пароль", 30 to "30 дней", 90 to "90 дней", 180 to "180 дней")
-    var selectedDaysOption by remember { mutableStateOf(daysOptions) }
+    var selectedDaysOption by remember { mutableStateOf(daysOptions.first()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -230,6 +231,7 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
         confirmButton = { Button(onClick = { val isMnemonicType = (selectedTab == 2); val finalLen = if (selectedTab == 1) randomLength.toIntOrNull() ?: 16 else length.toIntOrNull() ?: 16; val finalExplicit = if (selectedTab == 0 || selectedTab == 1) explicitPass.takeIf { it.isNotEmpty() } else null; onSave(service, login, isMnemonicType, finalLen, salt, selectedDaysOption.first, finalExplicit, isDualUserMode) }) { Text("Сохранить") } }
     )
 }
+
 @Composable
 fun PasswordStrengthMeter(password: String) {
     if (password.isEmpty()) return
