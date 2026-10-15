@@ -7,16 +7,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
+import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import javax.inject.Inject
 
 @HiltViewModel
 class VaultViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val cryptoEngine: SecurityCryptoEngine // Внедряем криптодвижок для проверки PIN
 ) : ViewModel() {
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
@@ -24,6 +27,12 @@ class VaultViewModel @Inject constructor(
 
     private val _calculatedPassword = MutableStateFlow<String?>(null)
     val calculatedPassword: StateFlow<String?> = _calculatedPassword.asStateFlow()
+
+    private val _pinVerificationSuccess = MutableStateFlow(false)
+    val pinVerificationSuccess: StateFlow<Boolean> = _pinVerificationSuccess.asStateFlow()
+
+    private val _vaultError = MutableStateFlow<String?>(null)
+    val vaultError: StateFlow<String?> = _vaultError.asStateFlow()
 
     init {
         observeActiveProfile()
@@ -43,13 +52,43 @@ class VaultViewModel @Inject constructor(
         }
     }
 
+    // Метод проверки PIN-кода профиля перед показом пароля
+    fun verifyProfilePinForAction(pin: String, onSuccessAction: () -> Unit) {
+        val profileId = sessionManager.activeProfileId.value ?: return
+        _vaultError.value = null
+        
+        viewModelScope.launch {
+            val pinChars = pin.toCharArray()
+            val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
+            val testHash = cryptoEngine.hashPin(pinChars, staticSalt)
+            pinChars.fill(' ')
+
+            val isValid = repository.verifyPin(profileId, testHash)
+            if (isValid) {
+                _pinVerificationSuccess.value = true
+                onSuccessAction()
+            } else {
+                _pinVerificationSuccess.value = false
+                _vaultError.value = "Неверный PIN-код профиля"
+            }
+        }
+    }
+
+    fun clearVaultError() {
+        _vaultError.value = null
+    }
+
+    fun resetPinVerification() {
+        _pinVerificationSuccess.value = false
+    }
+
     fun onAddAccount(service: String, login: String, isMnemonic: Boolean, len: Int, salt: String, date: String, explicit: String?, isDual: Boolean) {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
             val account = Account(
                 id = 0, profileId = profileId, serviceName = service, login = login,
                 isMnemonic = isMnemonic, passwordLength = len, salt = salt, rotationDate = date, 
-                explicitPassword = explicit, isDualUserMode = isDual // Передаем флаг в репозиторий
+                explicitPassword = explicit, isDualUserMode = isDual
             )
             repository.saveAccount(account)
         }
@@ -65,6 +104,11 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    fun clearCalculatedPassword() { _calculatedPassword.value = null }
-    fun onDeleteAccount(id: Long) { viewModelScope.launch { repository.deleteAccount(id) } }
+    fun clearCalculatedPassword() { 
+        _calculatedPassword.value = null 
+    }
+    
+    fun onDeleteAccount(id: Long) { 
+        viewModelScope.launch { repository.deleteAccount(id) } 
+    }
 }
