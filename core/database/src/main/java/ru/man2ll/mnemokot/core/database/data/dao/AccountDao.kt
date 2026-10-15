@@ -23,4 +23,7 @@ interface AccountDao {
 
     @Query("SELECT COUNT(*) FROM accounts WHERE profileId = :profileId")
     suspend fun getAccountCountForProfile(profileId: Long): Int
+
+    @Query("SELECT * FROM accounts WHERE id IN (:accountIds)")
+    suspend fun getAccountsByIds(accountIds: List<Long>): List<AccountEntity>
 }
