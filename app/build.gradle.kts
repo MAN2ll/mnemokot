@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.zxing.core)
     implementation(libs.zxing.embedded)
+    implementation(libs.androidx.biometric)
     
     // Navigation
     implementation(libs.androidx.navigation.compose)
