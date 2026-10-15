@@ -73,6 +73,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
                         }
                     }
                 }
+                
                 vaultError?.let { report ->
                     AlertDialog(onDismissRequest = { viewModel.clearVaultError() }, title = { Text("Аудит безопасности ротации", fontWeight = FontWeight.Bold) }, text = { Text(report, fontSize = 14.sp) }, confirmButton = { Button(onClick = { viewModel.clearVaultError() }) { Text("Принять риски и закрыть") } })
                 }
@@ -133,27 +134,10 @@ fun VaultScreen(viewModel: VaultViewModel) {
     }
 }
 @Composable
-fun AccountItem(
-    account: Account,
-    isSelectionMode: Boolean,
-    isSelected: Boolean,
-    onSelectToggle: () -> Unit,
-    onShowPasswordClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
+fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean, onSelectToggle: () -> Unit, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    
-    // Стейт для отображения диалога QR-кода именно для этой карточки
     var showQrDialog by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isSelectionMode) { onSelectToggle() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(enabled = isSelectionMode) { onSelectToggle() }, colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -161,7 +145,7 @@ fun AccountItem(
                 if (account.expiresAt > 0L) {
                     val daysLeft = ((account.expiresAt - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).coerceAtLeast(0)
                     Text(text = if (daysLeft > 0) "Истекает через: $daysLeft дн." else "Пароль устарел! Требуется смена", fontSize = 12.sp, color = if (daysLeft <= 7) Color(0xFFEF5350) else Color(0xFFFFEE58), fontWeight = FontWeight.Medium)
-                } else { Text("Срок действия: Вечный", fontSize = 12.sp, color = Color.LightGray) }
+                } else { Text("Срок действие: Вечный", fontSize = 12.sp, color = Color.LightGray) }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     SuggestionChip(onClick = {}, label = { Text(if (account.isMnemonic) "AMPG v2" else "Явный") })
@@ -172,68 +156,30 @@ fun AccountItem(
                 }
             }
             if (isSelectionMode) { Checkbox(checked = isSelected, onCheckedChange = { onSelectToggle() }) }
-            else { 
-                Row { 
-                    // НОВАЯ КНОПКА: Вызов физической QR-метки
-                    IconButton(onClick = { showQrDialog = true }) { 
-                        Text("📷", fontSize = 16.sp) 
-                    }
-                    IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }
-                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } 
-                } 
-            }
+            else { Row { IconButton(onClick = { showQrDialog = true }) { Text("📷", fontSize = 16.sp) }; IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }; IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } } }
         }
     }
-
-    // ДИАЛОГ ОТОБРАЖЕНИЯ ФИЗИЧЕСКОЙ МЕТКИ (QR-КОД С БЕЗОПАСНЫМ ИНДЕКСОМ)
     if (showQrDialog) {
         val qrBitmap = remember { QrCodeGenerator.generateAccountQr(account.id, account.profileId, account.serviceName) }
-        
         AlertDialog(
             onDismissRequest = { showQrDialog = false },
             title = { Text("Физическая QR-метка", fontWeight = FontWeight.Bold) },
             text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text("Метка: MnemoKot 🐾 | ${account.serviceName}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    
-                    if (qrBitmap != null) {
-                        androidx.compose.foundation.Image(
-                            bitmap = androidx.compose.ui.graphics.asImageBitmap(qrBitmap),
-                            contentDescription = "QR Code",
-                            modifier = Modifier.size(200.dp)
-                        )
-                    } else {
-                        Text("Ошибка генерации графической матрицы", color = MaterialTheme.colorScheme.error)
-                    }
-                    
+                    if (qrBitmap != null) { androidx.compose.foundation.Image(bitmap = androidx.compose.ui.graphics.asImageBitmap(qrBitmap), contentDescription = "QR Code", modifier = Modifier.size(200.dp)) }
+                    else { Text("Ошибка матрицы", color = MaterialTheme.colorScheme.error) }
                     Spacer(modifier = Modifier.height(12.dp))
-                    // КРИТИЧЕСКОЕ ИНФОРМИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ ОБ УРОВНЕ БЕЗОПАСНОСТИ
-                    Surface(
-                        color = Color(021, 32, 24, 255), // Мягкий темно-зеленый фон щита безопасности
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.",
-                            fontSize = 11.sp,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(8.dp),
-                            lineHeight = 14.sp
-                        )
+                    Surface(color = Color(0xFF1B2A1C), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Text(text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.", fontSize = 11.sp, color = Color.LightGray, modifier = Modifier.padding(8.dp), lineHeight = 14.sp)
                     }
                 }
             },
-            confirmButton = {
-                Button(onClick = { showQrDialog = false }) { Text("Закрыть") }
-            }
+            confirmButton = { Button(onClick = { showQrDialog = false }) { Text("Закрыть") } }
         )
     }
 }
-
 @Composable
 fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, Int, String, Int, String?, Boolean) -> Unit) {
     var service by remember { mutableStateOf("") }
@@ -249,7 +195,7 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
     var isDualUserMode by remember { mutableStateOf(false) }
     var daysMenuExpanded by remember { mutableStateOf(false) }
     val daysOptions = listOf(0 to "Вечный пароль", 30 to "30 дней", 90 to "90 дней", 180 to "180 дней")
-    var selectedDaysOption by remember { mutableStateOf(daysOptions[0]) }
+    var selectedDaysOption by remember { mutableStateOf(daysOptions) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -274,7 +220,7 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
                     }
                     2 -> {
                         item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it }); Spacer(modifier = Modifier.width(8.dp)); Column { Text("Режим 2-х пользователей", fontSize = 14.sp, fontWeight = FontWeight.Medium); Text("Пароль разделится пополам", fontSize = 11.sp, color = Color.Gray) } } }
-                        item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text(if (isDualUserMode) "Длина (16, 18 или 20)" else "Длина пароля") }) }
+                        item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text(if (isDualUserMode) { "Длина (16, 18 или 20)" } else { "Длина пароля" }) }) }
                         item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Своя соль") }) }
                     }
                 }
@@ -284,7 +230,6 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
         confirmButton = { Button(onClick = { val isMnemonicType = (selectedTab == 2); val finalLen = if (selectedTab == 1) randomLength.toIntOrNull() ?: 16 else length.toIntOrNull() ?: 16; val finalExplicit = if (selectedTab == 0 || selectedTab == 1) explicitPass.takeIf { it.isNotEmpty() } else null; onSave(service, login, isMnemonicType, finalLen, salt, selectedDaysOption.first, finalExplicit, isDualUserMode) }) { Text("Сохранить") } }
     )
 }
-
 @Composable
 fun PasswordStrengthMeter(password: String) {
     if (password.isEmpty()) return
@@ -324,7 +269,7 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
         data = android.provider.CalendarContract.Events.CONTENT_URI
         putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
-        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить пароль для сервиса $serviceName.")
+        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000)
         putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
