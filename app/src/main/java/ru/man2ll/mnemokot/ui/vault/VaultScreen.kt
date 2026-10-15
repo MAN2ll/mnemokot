@@ -368,15 +368,12 @@ fun AddAccountDialog(accountToEdit: Account?, onDismiss: () -> Unit, onSave: (St
                 item { OutlinedTextField(value = service, onValueChange = { service = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Название сервиса") }) }
                 item { OutlinedTextField(value = login, onValueChange = { login = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Логин / Email") }) }
                 item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Тег записи (например, #работа)") }) }
-                
-                // РАЗДЕЛИТЕЛЬ ДЛЯ ОБОЗНАЧЕНИЯ МЕТОДОВ ГЕНЕРАЦИИ ПАРОЛЕЙ
                 item { 
                     Column {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         Text("Конструктор секретного пароля", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
-                
                 item { TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(vertical = 4.dp)) { Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Ручной ввод", fontSize = 11.sp) }); Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Случайный", fontSize = 11.sp) }); Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Парольная фраза", fontSize = 11.sp) }) } }
                 when (selectedTab) {
                     0 -> {
@@ -434,9 +431,8 @@ fun generateRandomPassword(length: Int, useUpper: Boolean, useDigits: Boolean, u
     if (useDigits) allowedChars.append(digitChars)
     if (useSpecial) allowedChars.append(specialChars)
     
-    // Новое строгое правило: Баланс энтропии (Равное количество символов каждого типа)
     val poolSize = length / 4
-    if (poolSize >= 1) {
+    if (poolSize >= 1 && useUpper && useDigits && useSpecial) {
         val secureRandom = java.security.SecureRandom()
         val p1 = (1..poolSize).map { lowerChars[secureRandom.nextInt(lowerChars.length)] }
         val p2 = (1..poolSize).map { upperChars[secureRandom.nextInt(upperChars.length)] }
@@ -444,7 +440,6 @@ fun generateRandomPassword(length: Int, useUpper: Boolean, useDigits: Boolean, u
         val p4 = (1..(length - poolSize * 3)).map { specialChars[secureRandom.nextInt(specialChars.length)] }
         return (p1 + p2 + p3 + p4).shuffled().joinToString("")
     }
-    
     val secureRandom = java.security.SecureRandom()
     return (1..length).map { allowedChars[secureRandom.nextInt(allowedChars.length)] }.joinToString("")
 }
@@ -454,7 +449,7 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
         data = android.provider.CalendarContract.Events.CONTENT_URI
         putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
-        putExtra(android.provider.CalendarContract.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
+        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000)
         putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
