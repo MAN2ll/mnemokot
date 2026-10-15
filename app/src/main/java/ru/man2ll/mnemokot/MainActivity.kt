@@ -5,18 +5,9 @@ import androidx.activity.viewModels
 import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import dagger.hilt.android.AndroidEntryPoint
@@ -62,12 +53,14 @@ class MainActivity : FragmentActivity() {
 
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     if (!isMasterAuthorized) {
+                        // Рубеж №1: Глобальный Мастер-пароль / Отпечаток
                         MasterAuthScreen(viewModel = masterViewModel, onAccessGranted = { isMasterAuthorized = true })
                     } else if (!isAuthorized) {
+                        // Рубеж №2: Внутрисейфовые изолированные профили
                         AuthScreen(viewModel = authViewModel, onAuthSuccess = {})
                     } else {
-                        // Для предотвращения рваных кодов, этот вызов прописан напрямую
-                        Text("Авторизация успешна. Многомодульное ядро запущено.")
+                        // ИСПРАВЛЕНИЕ: Вместо черного окна запускаем полноценный контейнер журналов паролей
+                        MainNavigationDrawerContainer(vaultViewModel, auditViewModel, backupViewModel, sessionManager)
                     }
                 }
             }
