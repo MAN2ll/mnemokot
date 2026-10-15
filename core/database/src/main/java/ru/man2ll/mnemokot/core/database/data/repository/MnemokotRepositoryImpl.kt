@@ -6,13 +6,17 @@ import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
+import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
 import ru.man2ll.mnemokot.core.database.data.mapper.toDomain
 import ru.man2ll.mnemokot.core.database.data.mapper.toEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.model.AccountEntity
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity
+import ru.man2ll.mnemokot.core.database.domain.model.MasterSettingsEntity
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +24,7 @@ import javax.inject.Singleton
 class MnemokotRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val accountDao: AccountDao,
+    private val masterSettingsDao: MasterSettingsDao,
     private val passwordGenerator: PasswordGenerator
 ) : MnemokotRepository {
 
@@ -140,5 +145,63 @@ class MnemokotRepositoryImpl @Inject constructor(
         }
 
         return Pair(true, finalMessage)
+    }
+
+    // РЕАЛИЗАЦИЯ МЕТОДОВ МАСТЕР-ПАРОЛЯ И БИОМЕТРИИ
+    override suspend fun isMasterPasswordSet(): Boolean {
+        val settings = masterSettingsDao.getSettings()
+        return settings?.masterPasswordHash != null
+    }
+
+    override suspend fun setupMasterPassword(passwordHash: String): Boolean {
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = passwordHash)
+        masterSettingsDao.saveSettings(current.copy(masterPasswordHash = passwordHash, updatedAt = System.currentTimeMillis()))
+        return true
+    }
+
+    override suspend fun verifyMasterPassword(passwordHash: String): Boolean {
+        val settings = masterSettingsDao.getSettings() ?: return false
+        return settings.masterPasswordHash == passwordHash
+    }
+
+    override suspend fun isBiometricEnabled(): Boolean {
+        val settings = masterSettingsDao.getSettings()
+        return settings?.isBiometricEnabled ?: false
+    }
+
+    override suspend fun setBiometricEnabled(enabled: Boolean) {
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = null)
+        masterSettingsDao.saveSettings(current.copy(isBiometricEnabled = enabled, updatedAt = System.currentTimeMillis()))
+    }
+
+    // РЕАЛИЗАЦИЯ ГЕНЕРАЦИИ ТЕКСТОВОГО СЛУЖЕБНОГО КОНВЕРТА БЕЗОПАСНОСТИ
+    override suspend fun generateSecurityEnvelopeText(accountIds: List<Long>): String {
+        val entities = accountDao.getAccountsByIds(accountIds)
+        if (entities.isEmpty()) return "Список отмеченных записей пуст."
+
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+        val builder = StringBuilder()
+        builder.append("=========================================\n")
+        builder.append("      СЛУЖЕБНЫЙ КОНВЕРТ БЕЗОПАСНОСТИ      \n")
+        builder.append("             Приложение MnemoKot         \n")
+        builder.append("=========================================\n")
+        builder.append("Дата выгрузки: ${dateFormat.format(System.currentTimeMillis())}\n\n")
+
+        entities.forEachIndexed { index, account ->
+            builder.append("${index + 1}. СЕРВИС: ${account.serviceName}\n")
+            builder.append("   ЛОГИН:  ${account.login}\n")
+            
+            // Вычисляем пароль в открытом виде для вывода на печать в конверт
+            val passwordChars = getPasswordForAccount(account.id, "Emergency_Print_Phrase")
+            val passString = if (passwordChars.isNotEmpty()) String(passwordChars) else "Ошибка расчета (требуется исходная мастер-фраза)"
+            passwordChars.fill(' ')
+
+            builder.append("   ПАРОЛЬ: $passString\n")
+            builder.append("   МОДИФИЦИРОВАН: ${dateFormat.format(account.updatedAt)}\n")
+            builder.append("-----------------------------------------\n")
+        }
+        
+        builder.append("КОНЕЦ ОТЧЕТА. Храните данный лист в сейфе.")
+        return builder.toString()
     }
 }
