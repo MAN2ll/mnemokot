@@ -180,3 +180,31 @@ fun AddAccountDialog(onDismiss: () -> Unit, onSave: (String, String, Boolean, In
         confirmButton = { Button(onClick = { onSave(service, login, isMnemonic, length.toIntOrNull() ?: 16, salt, rotationDate, explicitPass.takeIf { it.isNotEmpty() }, isDualUserMode) }) { Text("Сохранить") } }
     )
 }
+@Composable
+fun PasswordStrengthMeter(password: String) {
+    if (password.isEmpty()) return
+    
+    var score = 0
+    if (password.length >= 8) score++
+    if (password.length >= 12) score++
+    if (password.any { it.isDigit() }) score++
+    if (password.any { it.isUpperCase() } && password.any { it.isLowerCase() }) score++
+    if (password.any { !it.isLetterOrDigit() }) score++
+
+    val (text, color) = when {
+        score <= 2 -> "Слабый пароль" to Color(0xFFEF5350) // Красный
+        score <= 4 -> "Средний пароль" to Color(0xFFFFEE58) // Желтый
+        else -> "Надежный пароль" to Color(0xFF66BB6A) // Зеленый
+    }
+
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = color)
+        Spacer(modifier = Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { (score / 5f).coerceIn(0.1f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(6.dp),
+            color = color,
+            trackColor = Color.DarkGray
+        )
+    }
+}
