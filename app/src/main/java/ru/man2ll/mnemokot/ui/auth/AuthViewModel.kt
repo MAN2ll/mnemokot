@@ -1,159 +1,284 @@
 package ru.man2ll.mnemokot.ui.auth
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
-import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
-import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
-import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
-import javax.inject.Inject
 
-sealed interface AuthUiState {
-    data object Loading : AuthUiState
-    data class ProfileSelection(val profiles: List<UserProfile>) : AuthUiState
-    data object CreateProfile : AuthUiState
-    data class EnterPin(val profileName: String, val remainingAttempts: Int) : AuthUiState
+@Composable
+fun AuthScreen(
+    viewModel: AuthViewModel,
+    onAuthSuccess: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val pinInput by viewModel.pinInput.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when (val state = uiState) {
+            is AuthUiState.Loading -> {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+            is AuthUiState.ProfileSelection -> {
+                ProfileSelectionView(
+                    profiles = state.profiles,
+                    onSelect = { userProfile -> viewModel.onSelectProfile(userProfile) },
+                    onCreateClick = viewModel::navigateToCreateProfile
+                )
+            }
+            is AuthUiState.CreateProfile -> {
+                CreateProfileView(
+                    onCreate = viewModel::onCreateProfile,
+                    onCancel = viewModel::cancelCreateProfile,
+                    error = errorMessage
+                )
+            }
+            is AuthUiState.EnterPin -> {
+                EnterPinView(
+                    profileName = state.profileName,
+                    pinInput = pinInput,
+                    error = errorMessage,
+                    onKeyClick = viewModel::onPinKeyClick,
+                    onBackClick = viewModel::cancelCreateProfile,
+                    onConfirmClick = { viewModel.triggerManualVerification() }
+                )
+            }
+        }
+    }
 }
+@Composable
+fun ProfileSelectionView(
+    profiles: List<UserProfile>,
+    onSelect: (UserProfile) -> Unit,
+    onCreateClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Выберите профиль сейфа",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
 
-@HiltViewModel
-class AuthViewModel @Inject constructor(
-    private val repository: MnemokotRepository,
-    private val cryptoEngine: SecurityCryptoEngine,
-    private val sessionManager: SessionManager
-) : ViewModel() {
-
-    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Loading)
-    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
-
-    private val _pinInput = MutableStateFlow("")
-    val pinInput: StateFlow<String> = _pinInput.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    init {
-        loadProfilesState()
-    }
-
-    fun loadProfilesState() {
-        viewModelScope.launch {
-            _uiState.value = AuthUiState.Loading
-            val profiles = repository.getProfiles().first()
-            val activeId = sessionManager.activeProfileId.value
-            
-            if (profiles.isEmpty()) {
-                _uiState.value = AuthUiState.CreateProfile
-            } else if (activeId == null) {
-                _uiState.value = AuthUiState.ProfileSelection(profiles)
-            } else {
-                val activeProfile = profiles.firstOrNull { it.id == activeId }
-                if (activeProfile != null) {
-                    val remaining = repository.getRemainingAttempts(activeId)
-                    _uiState.value = AuthUiState.EnterPin(activeProfile.profileName, remaining)
-                } else {
-                    _uiState.value = AuthUiState.ProfileSelection(profiles)
-                }
-            }
-        }
-    }
-
-    fun onSelectProfile(profile: UserProfile) {
-        _pinInput.value = ""
-        _errorMessage.value = null
-        sessionManager.selectProfile(profile.id)
-        loadProfilesState() // Синхронно переключаем экран на ввод PIN
-    }
-
-    fun navigateToCreateProfile() {
-        _pinInput.value = ""
-        _errorMessage.value = null
-        _uiState.value = AuthUiState.CreateProfile
-    }
-
-    fun cancelCreateProfile() {
-        _pinInput.value = ""
-        _errorMessage.value = null
-        sessionManager.logout()
-        loadProfilesState() // Жесткий синхронный возврат к списку без залипаний
-    }
-
-    fun onCreateProfile(name: String, pin: String) {
-        if (name.isBlank() || pin.length < 4) {
-            _errorMessage.value = "Заполните имя и PIN (мин. 4 цифры)"
-            return
-        }
-        viewModelScope.launch {
-            val pinChars = pin.toCharArray()
-            val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-            val securedHash = cryptoEngine.hashPin(pinChars, staticSalt)
-            pinChars.fill(' ')
-            val newId = repository.createProfile(name, securedHash)
-            sessionManager.selectProfile(newId)
-            loadProfilesState()
-        }
-    }
-
-    fun onPinKeyClick(key: String) {
-        _errorMessage.value = null
-        val currentPin = _pinInput.value
-        if (key == "C") {
-            if (currentPin.isNotEmpty()) _pinInput.value = currentPin.dropLast(1)
-        } else {
-            if (currentPin.length < 6) {
-                val newPin = currentPin + key
-                _pinInput.value = newPin
-                if (newPin.length == 6) {
-                    verifyPin()
-                }
-            }
-        }
-    }
-    
-    fun triggerManualVerification() {
-        if (_pinInput.value.length >= 4) {
-            verifyPin()
-        } else {
-            _errorMessage.value = "PIN-код должен быть от 4 до 6 цифр"
-        }
-    }
-
-    private fun verifyPin() {
-        val profileId = sessionManager.activeProfileId.value ?: return
-        viewModelScope.launch {
-            val enteredPinChars = _pinInput.value.toCharArray()
-            val profiles = repository.getProfiles().first()
-            val activeProfile = profiles.firstOrNull { it.id == profileId }
-
-            if (activeProfile != null) {
-                val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-                val testHash = cryptoEngine.hashPin(enteredPinChars, staticSalt)
-                enteredPinChars.fill(' ')
-
-                val isValid = repository.verifyPin(profileId, testHash)
-
-                if (isValid) {
-                    repository.resetFailedAttempts(profileId)
-                    _pinInput.value = ""
-                    sessionManager.authorizeSuccess()
-                } else {
-                    _pinInput.value = ""
-                    val result = repository.incrementFailedAttempts(profileId)
-                    if (result == -1) {
-                        sessionManager.logout()
-                        loadProfilesState()
-                        _errorMessage.value = "Профиль уничтожен из-за брутфорса!"
-                    } else {
-                        val remaining = repository.getRemainingAttempts(profileId)
-                        _errorMessage.value = "Неверный PIN. Осталось попыток: $remaining"
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            items(profiles) { profile ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(profile) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = profile.profileName,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        OutlinedButton(
+            onClick = onCreateClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Создать новый профиль")
+        }
+    }
+}
+
+@Composable
+fun CreateProfileView(
+    onCreate: (String, String) -> Unit,
+    onCancel: () -> Unit,
+    error: String?
+) {
+    var name by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Создание профиля MnemoKot",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Имя профиля (Личный, Работа...)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        OutlinedTextField(
+            value = pin,
+            onValueChange = { if (it.all { ch -> ch.isDigit() } && it.length <= 6) pin = it },
+            label = { Text("Установите PIN (4-6 цифр)") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        if (error != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Button(
+            onClick = { onCreate(name, pin) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Создать и войти")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
+            Text("Назад к выбору профилей")
+        }
+    }
+}
+
+@Composable
+fun EnterPinView(
+    profileName: String,
+    pinInput: String,
+    error: String?,
+    onKeyClick: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onConfirmClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Профиль: $profileName", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "Введите PIN-код", fontSize = 14.sp, color = Color.Gray)
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ИСПРАВЛЕНИЕ: Точки растут динамически, пустые скрыты
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(16.dp)) {
+            if (pinInput.isEmpty()) {
+                Text("-", fontSize = 16.sp, color = Color.DarkGray, fontWeight = FontWeight.Bold)
+            } else {
+                repeat(pinInput.length) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+            }
+        }
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        val keys = listOf(
+            listOf("1", "2", "3"),
+            listOf("4", "5", "6"),
+            listOf("7", "8", "9"),
+            listOf("", "0", "C")
+        )
+
+        for (row in keys) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                for (key in row) {
+                    if (key.isEmpty()) {
+                        Spacer(modifier = Modifier.size(64.dp))
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { onKeyClick(key) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(key, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onConfirmClick,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
