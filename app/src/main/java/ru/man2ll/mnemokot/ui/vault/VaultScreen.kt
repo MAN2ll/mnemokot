@@ -421,7 +421,7 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
         data = android.provider.CalendarContract.Events.CONTENT_URI
         putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
-        putExtra(android.provider.CalendarContract.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName.")
+        putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName в целях безопасности.")
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000)
         putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
@@ -429,3 +429,4 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     }
     context.startActivity(intent)
 }
+
