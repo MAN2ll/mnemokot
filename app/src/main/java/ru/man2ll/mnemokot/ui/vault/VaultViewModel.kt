@@ -82,18 +82,44 @@ class VaultViewModel @Inject constructor(
         _pinVerificationSuccess.value = false
     }
 
-    fun onAddAccount(service: String, login: String, isMnemonic: Boolean, len: Int, salt: String, date: String, explicit: String?, isDual: Boolean) {
+    fun onAddAccount(
+        service: String, 
+        login: String, 
+        isMnemonic: Boolean, 
+        len: Int, 
+        salt: String, 
+        daysToLive: Int, // Заменили старую строку на количество дней жизни пароля
+        explicit: String?, 
+        isDual: Boolean
+    ) {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
+            val currentTime = System.currentTimeMillis()
+            // Если выбрано 0 дней — пароль вечный (expiresAt = 0), иначе прибавляем дни к текущему времени
+            val expiresAtTime = if (daysToLive > 0) {
+                currentTime + (daysToLive.toLong() * 24 * 60 * 60 * 1000)
+            } else {
+                0L
+            }
+
             val account = Account(
-                id = 0, profileId = profileId, serviceName = service, login = login,
-                isMnemonic = isMnemonic, passwordLength = len, salt = salt, rotationDate = date, 
-                explicitPassword = explicit, isDualUserMode = isDual
+                id = 0, 
+                profileId = profileId, 
+                serviceName = service, 
+                login = login,
+                isMnemonic = isMnemonic, 
+                passwordLength = len, 
+                salt = salt, 
+                rotationDate = daysToLive.toString(), 
+                explicitPassword = explicit, 
+                isDualUserMode = isDual,
+                createdAt = currentTime,
+                expiresAt = expiresAtTime
             )
             repository.saveAccount(account)
         }
     }
-
+    
     fun onCalculatePassword(accountId: Long, phrase: String?) {
         viewModelScope.launch {
             val passChars = repository.getPasswordForAccount(accountId, phrase)
