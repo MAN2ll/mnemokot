@@ -191,28 +191,30 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                         },
                         confirmButton = {
                             Button(onClick = {
-                                val isMasterValid = masterAuthViewModel.onVerifyMasterPassword(masterInputForEnvelope)
-                                if (isMasterValid) {
-                                    showMasterRequestForEnvelope = false
-                                    val ids = selectedAccountIds.toList()
-                                    val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                                    val builder = StringBuilder()
-                                    builder.append("=========================================\n")
-                                    builder.append("      СЛУЖЕБНЫЙ КОНВЕРТ БЕЗОПАСНОСТИ      \n")
-                                    builder.append("=========================================\n")
-                                    builder.append("Дата выгрузки: ${dateFormat.format(System.currentTimeMillis())}\n\n")
-                                    
-                                    accounts.filter { ids.contains(it.id) }.forEachIndexed { idx, acc ->
-                                        builder.append("${idx + 1}. СЕРВИС: ${acc.serviceName}\n")
-                                        builder.append("   ЛОГИН:  ${acc.login}\n")
-                                        builder.append("   ПАРОЛЬ: ${acc.explicitPassword ?: "Мнемокод (расчет на лету по PIN)"}\n")
-                                        builder.append("-----------------------------------------\n")
+                                // Вызываем асинхронный метод с мгновенным возвратом результата в лямбду
+                                masterAuthViewModel.onVerifyMasterPassword(masterInputForEnvelope) { isMasterValid ->
+                                    if (isMasterValid) {
+                                        showMasterRequestForEnvelope = false
+                                        val ids = selectedAccountIds.toList()
+                                        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                                        val builder = StringBuilder()
+                                        builder.append("=========================================\n")
+                                        builder.append("      СЛУЖЕБНЫЙ КОНВЕРТ БЕЗОПАСНОСТИ      \n")
+                                        builder.append("=========================================\n")
+                                        builder.append("Дата выгрузки: ${dateFormat.format(System.currentTimeMillis())}\n\n")
+                                        
+                                        accounts.filter { ids.contains(it.id) }.forEachIndexed { idx, acc ->
+                                            builder.append("${idx + 1}. СЕРВИС: ${acc.serviceName}\n")
+                                            builder.append("   ЛОГИН:  ${acc.login}\n")
+                                            builder.append("   ПАРОЛЬ: ${acc.explicitPassword ?: "Мнемокод (расчет на лету по PIN)"}\n")
+                                            builder.append("-----------------------------------------\n")
+                                        }
+                                        
+                                        pendingEnvelopeText = builder.toString()
+                                        fileExportLauncher.launch("mnemokot_envelope_${System.currentTimeMillis()}.txt")
+                                    } else {
+                                        envelopeMasterError = "Неверный глобальный Мастер-пароль!"
                                     }
-                                    
-                                    pendingEnvelopeText = builder.toString()
-                                    fileExportLauncher.launch("mnemokot_envelope_${System.currentTimeMillis()}.txt")
-                                } else {
-                                    envelopeMasterError = "Неверный глобальный Мастер-пароль!"
                                 }
                             }) { Text("Подтвердить") }
                         },
