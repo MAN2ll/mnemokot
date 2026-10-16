@@ -127,7 +127,7 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                     singleLine = true
                 )
             }
-            if (accounts.isNotEmpty()) {
+        if (accounts.isNotEmpty()) {
                 Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondaryContainer, tonalElevation = 2.dp) {
                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         if (!isSelectionMode) {
@@ -151,7 +151,6 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                                     val ids = selectedAccountIds.toList()
                                     if (ids.isEmpty()) { Toast.makeText(context, "Отметьте записи", Toast.LENGTH_SHORT).show() }
                                     else {
-                                        // Активируем двухфакторное подтверждение операции Мастер-паролем
                                         masterInputForEnvelope = ""
                                         envelopeMasterError = null
                                         showMasterRequestForEnvelope = true
@@ -162,7 +161,6 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                     }
                 }
             }
-
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 if (filteredAccounts.isEmpty()) {
                     Text("Записей не найдено.", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
