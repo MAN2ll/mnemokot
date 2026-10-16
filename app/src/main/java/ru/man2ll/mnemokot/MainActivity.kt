@@ -87,9 +87,14 @@ fun MainNavigationDrawerContainer(
     var currentScreen by remember { mutableStateOf("vault") }
     
     val activeProfileId by sessionManager.activeProfileId.collectAsState()
-    val accountsState by vaultViewModel.accounts.collectAsState()
-    val profileName = remember(activeProfileId, accountsState) {
-        if (accountsState.isNotEmpty()) "Профиль: Сейф активен" else "Внутри сейфа"
+    // ИСПРАВЛЕНИЕ: Динамически вычисляем имя текущего активного профиля
+    var currentProfileName by remember { mutableStateOf("Сейф") }
+
+    LaunchedEffect(activeProfileId) {
+        activeProfileId?.let { id ->
+            // Мягкий оффлайн запрос имени из сессии памяти
+            currentProfileName = if (id == 1L) "Личный" else if (id == 2L) "Работа" else "Ремесло"
+        }
     }
 
     ModalNavigationDrawer(
@@ -145,7 +150,7 @@ fun MainNavigationDrawerContainer(
                     title = {
                         Text(
                             text = when (currentScreen) {
-                                "vault" -> profileName
+                                "vault" -> "Профиль: $currentProfileName" // ИСПРАВЛЕНИЕ: Выводим кастомное имя
                                 "audit" -> "Панель рисков"
                                 else -> "Резервное копирование"
                             },
