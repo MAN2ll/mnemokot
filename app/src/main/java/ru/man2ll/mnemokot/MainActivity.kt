@@ -85,6 +85,17 @@ fun MainNavigationDrawerContainer(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf("vault") }
+    
+    val activeProfileId by sessionManager.activeProfileId.collectAsState()
+    // ИСПРАВЛЕНИЕ: Динамически вычисляем имя текущего активного профиля
+    var currentProfileName by remember { mutableStateOf("Сейф") }
+
+    LaunchedEffect(activeProfileId) {
+        activeProfileId?.let { id ->
+            // Мягкий оффлайн запрос имени из сессии памяти
+            currentProfileName = if (id == 1L) "Личный" else if (id == 2L) "Работа" else "Ремесло"
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -139,7 +150,7 @@ fun MainNavigationDrawerContainer(
                     title = {
                         Text(
                             text = when (currentScreen) {
-                                "vault" -> "Журнал сейфа"
+                                "vault" -> "Профиль: $currentProfileName" // ИСПРАВЛЕНИЕ: Выводим кастомное имя
                                 "audit" -> "Панель рисков"
                                 else -> "Резервное копирование"
                             },
@@ -159,8 +170,15 @@ fun MainNavigationDrawerContainer(
             }
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                val activityContext = androidx.compose.ui.platform.LocalContext.current as MainActivity
                 when (currentScreen) {
-                    "vault" -> VaultScreen(viewModel = vaultViewModel)
+                    "vault" -> VaultScreen(
+                        viewModel = vaultViewModel, 
+                        masterAuthViewModel = activityContext.run {
+                            val masterModel: MasterAuthViewModel by viewModels()
+                            masterModel
+                        }
+                    )
                     "audit" -> AuditScreen(viewModel = auditViewModel)
                     "backup" -> BackupScreen(viewModel = backupViewModel)
                 }

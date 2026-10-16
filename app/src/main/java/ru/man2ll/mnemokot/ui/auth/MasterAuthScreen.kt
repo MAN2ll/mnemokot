@@ -25,7 +25,6 @@ fun MasterAuthScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
 
-    // Метод вызова аппаратного сканера отпечатка пальца с мягким подавлением отмены
     fun showBiometricPrompt() {
         val activity = context as? FragmentActivity ?: return
         val executor = ContextCompat.getMainExecutor(context)
@@ -36,10 +35,8 @@ fun MasterAuthScreen(
                     super.onAuthenticationSucceeded(result)
                     viewModel.onBiometricSuccess()
                 }
-
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    // ФИКС: Если пользователь нажал кнопку отмены или "Ввести пароль" — не закрываем приложение
                 }
             })
 
@@ -65,17 +62,14 @@ fun MasterAuthScreen(
             is MasterUiState.Loading -> CircularProgressIndicator()
             is MasterUiState.SetupMaster -> {
                 MasterSetupView(
-                    onSave = { pass, enableBio -> 
-                        viewModel.setBiometricPreference(enableBio)
-                        viewModel.onSetupMasterPassword(pass)
-                    }, 
+                    onSave = { pass, enableBio -> viewModel.onSetupMasterPassword(pass, enableBio) }, 
                     error = errorMessage
                 )
             }
             is MasterUiState.EnterMaster -> {
                 MasterLoginView(
                     isBioAvailable = state.isBiometricAvailable,
-                    onVerify = viewModel::onVerifyMasterPassword,
+                    onVerify = { pass -> viewModel.onVerifyMasterPassword(pass) { /* callback */ } },
                     onBioClick = { showBiometricPrompt() },
                     error = errorMessage
                 )
@@ -90,13 +84,13 @@ fun MasterAuthScreen(
 fun MasterSetupView(onSave: (String, Boolean) -> Unit, error: String?) {
     var pass by remember { mutableStateOf("") }
     var confirmPass by remember { mutableStateOf("") }
-    var enableBiometric by remember { mutableStateOf(true) } // По умолчанию предлагаем биометрию
+    var enableBiometric by remember { mutableStateOf(true) }
     var localError by remember { mutableStateOf<String?>(null) }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("Первичная защита MnemoKot", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("Первичная настройка MnemoKot", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Придумайте главный Мастер-пароль для шифрования и входа в приложение:", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
+        Text("Придумайте Мастер-пароль для входа в приложение:", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
         Spacer(modifier = Modifier.height(24.dp))
         
         OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Придумайте Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
@@ -104,8 +98,8 @@ fun MasterSetupView(onSave: (String, Boolean) -> Unit, error: String?) {
         OutlinedTextField(value = confirmPass, onValueChange = { confirmPass = it }, label = { Text("Повторите Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         
         Spacer(modifier = Modifier.height(16.dp))
-        // ОПЦИЯ: Включение биометрии прямо на этапе создания пароля
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+            Spacer(modifier = Modifier.width(4.dp))
             Switch(checked = enableBiometric, onCheckedChange = { enableBiometric = it })
             Spacer(modifier = Modifier.width(12.dp))
             Column {
@@ -128,7 +122,10 @@ fun MasterSetupView(onSave: (String, Boolean) -> Unit, error: String?) {
             },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
-        ) { Text("Установить глобальную защиту") }
+        ) { 
+            // ИСПРАВЛЕНИЕ: Лаконичное и чистое имя кнопки пуска ядра
+            Text("Начать") 
+        }
     }
 }
 
@@ -140,7 +137,7 @@ fun MasterLoginView(isBioAvailable: Boolean, onVerify: (String) -> Unit, onBioCl
         Text("MnemoKot заблокирован", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(24.dp))
         
-        OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Введите глобальный Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Введите Мастер-пароль") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         
         if (error != null) {
             Spacer(modifier = Modifier.height(12.dp))
