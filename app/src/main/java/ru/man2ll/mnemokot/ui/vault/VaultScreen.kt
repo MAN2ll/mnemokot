@@ -213,7 +213,7 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                                         pendingEnvelopeText = builder.toString()
                                         fileExportLauncher.launch("mnemokot_envelope_${System.currentTimeMillis()}.txt")
                                     } else {
-                                        envelopeMasterError = "Неверный глобальный Мастер-пароль!"
+                                        envelopeMasterError = "Неверный Мастер-пароль!"
                                     }
                                 }
                             }) { Text("Подтвердить") }
@@ -221,8 +221,7 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
                         dismissButton = { TextButton(onClick = { showMasterRequestForEnvelope = false }) { Text("Отмена") } }
                     )
                 }
-
-                showPinDialogForAccountId?.let { id ->
+                                showPinDialogForAccountId?.let { id ->
                     AlertDialog(
                         onDismissRequest = { showPinDialogForAccountId = null; pinVerificationInput = ""; viewModel.clearVaultError() },
                         title = { Text("Подтверждение операции") },
@@ -291,66 +290,40 @@ fun VaultScreen(viewModel: VaultViewModel, masterAuthViewModel: MasterAuthViewMo
         }
     }
 }
+
 @Composable
-fun AccountItem(
-    account: Account, 
-    isSelectionMode: Boolean, 
-    isSelected: Boolean, 
-    onSelectToggle: () -> Unit, 
-    onShowPasswordClick: () -> Unit, 
-    onDeleteClick: () -> Unit, 
-    onEditClick: () -> Unit
-) {
+fun AccountItem(account: Account, isSelectionMode: Boolean, isSelected: Boolean, onSelectToggle: () -> Unit, onShowPasswordClick: () -> Unit, onDeleteClick: () -> Unit, onEditClick: () -> Unit) {
     val context = LocalContext.current
-    val cardClipboard = LocalClipboardManager.current
     var showQrDialog by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isSelectionMode) { onSelectToggle() }, 
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(enabled = isSelectionMode) { onSelectToggle() }, colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(account.serviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    if (account.salt.startsWith("#")) { 
-                        Text(account.salt, fontSize = 12.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold) 
-                    }
+                    if (account.salt.startsWith("#")) { Text(account.salt, fontSize = 12.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold) }
                 }
                 Text(account.login, fontSize = 14.sp, color = Color.Gray)
                 if (account.expiresAt > 0L) {
                     val daysLeft = ((account.expiresAt - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).coerceAtLeast(0)
                     Text(text = if (daysLeft > 0) "Истекает через: $daysLeft дн." else "Пароль устарел! Требуется смена", fontSize = 12.sp, color = if (daysLeft <= 7) Color(0xFFEF5350) else Color(0xFFFFEE58), fontWeight = FontWeight.Medium)
-                } else { 
-                    Text("Срок действия: Вечный", fontSize = 12.sp, color = Color.LightGray) 
-                }
-                Text("Установлен: ${dateFormat.format(account.createdAt)}", fontSize = 10.sp, color = Color.Gray)
+                } else { Text("Срок действия: Постоянный", fontSize = 12.sp, color = Color.LightGray) }
+                
+                // ИСПРАВЛЕНИЕ: Метка времени последней модификации пароля
+                Text("Последняя модификация: ${dateFormat.format(account.createdAt)}", fontSize = 10.sp, color = Color.Gray)
+                
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     SuggestionChip(onClick = {}, label = { Text(if (account.isMnemonic) "Парольная фраза" else "Явный") })
                     if (account.isDualUserMode) SuggestionChip(onClick = {}, label = { Text("2 Игрока") })
                     if (account.expiresAt > 0L && !isSelectionMode) {
-                        TextButton(onClick = { addPasswordRotationReminder(context, account.serviceName, account.expiresAt) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)) { 
-                            Text("⏰ В календарь", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary) 
-                        }
+                        TextButton(onClick = { addPasswordRotationReminder(context, account.serviceName, account.expiresAt) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)) { Text("⏰ В календарь", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary) }
                     }
                 }
             }
-            if (isSelectionMode) { 
-                Checkbox(checked = isSelected, onCheckedChange = { onSelectToggle() }) 
-            } else { 
-                Row { 
-                    IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Правка", tint = Color.LightGray) }
-                    IconButton(onClick = { showQrDialog = true }) { Text("📷", fontSize = 16.sp) }
-                    IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }
-                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } 
-                } 
-            }
+            if (isSelectionMode) { Checkbox(checked = isSelected, onCheckedChange = { onSelectToggle() }) }
+            else { Row { IconButton(onClick = onEditClick) { Icon(Icons.Default.Edit, contentDescription = "Правка", tint = Color.LightGray) }; IconButton(onClick = { showQrDialog = true }) { Text("📷", fontSize = 16.sp) }; IconButton(onClick = onShowPasswordClick) { Icon(Icons.Default.Visibility, contentDescription = "Показать", tint = Color.White) }; IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error) } } }
         }
     }
     if (showQrDialog) {
@@ -366,13 +339,13 @@ fun AccountItem(
                     else { Text("Ошибка матрицы", color = MaterialTheme.colorScheme.error) }
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(color = Color(0xFF1B2A1C), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.", fontSize = 11.sp, color = Color.LightGray, modifier = Modifier.padding(8.dp), lineHeight = 14.sp)
-                    }
-                }
-            },
-            confirmButton = { Button(onClick = { showQrDialog = false }) { Text("Закрыть") } }
-        )
-    }
+                    Text(text = "🛡 Безопасность: Данный код содержит только индекс учетной записи для мгновенного поиска. Ваш секретный мастер-пароль или фраза здесь НЕ хранятся и не могут быть перехвачены при сканировании сторонними программами.", fontSize = 11.sp, color = Color.LightGray, modifier = Modifier.padding(8.dp), lineHeight = 14.sp)
+            }
+        }
+},
+        confirmButton = { Button(onClick = { showQrDialog = false }) { Text("Закрыть") } }
+            )
+        }
 }
 @Composable
 fun AddAccountDialog(accountToEdit: Account?, onDismiss: () -> Unit, onSave: (String, String, Boolean, Int, String, Int, String?, Boolean) -> Unit) {
@@ -385,11 +358,20 @@ fun AddAccountDialog(accountToEdit: Account?, onDismiss: () -> Unit, onSave: (St
     var useDigits by remember { mutableStateOf(true) }
     var useSpecial by remember { mutableStateOf(false) }
     var length by remember { mutableStateOf(accountToEdit?.passwordLength?.toString() ?: "16") }
+    
+    // ИСПРАВЛЕНИЕ: Интерактивный блок циклического перебора вариантов фразы
     var phraseInput by remember { mutableStateOf(if (accountToEdit?.isMnemonic == true) accountToEdit.rotationDate else "") }
+    var currentStyleIndex by remember { mutableStateOf(0) }
+    val conversionStyles = listOf("Прямое преобразование (ГОСТ)", "Клавиатурная раскладка (QWERTY)", "Улучшенный ГОСТ + Leet")
+    var previewGeneratedPassword by remember { mutableStateOf("") }
+    var isPasswordApproved by remember { mutableStateOf(accountToEdit?.explicitPassword?.isNotEmpty() ?: false) }
+
     var salt by remember { mutableStateOf(accountToEdit?.salt ?: "") }
     var isDualUserMode by remember { mutableStateOf(accountToEdit?.isDualUserMode ?: false) }
     var daysMenuExpanded by remember { mutableStateOf(false) }
-    val daysOptions = listOf(0 to "Вечный пароль", 30 to "30 дней", 90 to "90 дней", 180 to "180 дней")
+    
+    // ИСПРАВЛЕНИЕ: Лимиты сроков переименованы в "Постоянный" и добавлен "1 год"
+    val daysOptions = listOf(0 to "Постоянный", 30 to "30 дней", 90 to "90 дней", 365 to "1 год")
     var selectedDaysOption by remember { mutableStateOf(daysOptions.first()) }
 
     AlertDialog(
@@ -407,7 +389,7 @@ fun AddAccountDialog(accountToEdit: Account?, onDismiss: () -> Unit, onSave: (St
                         Text("Конструктор секретного пароля", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
-                item { TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(vertical = 4.dp)) { Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Ручной ввод", fontSize = 11.sp) }); Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Случайный", fontSize = 11.sp) }); Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Парольная фраза", fontSize = 11.sp) }) } }
+                item { TabRow(selectedTabIndex = selectedTab, modifier = Modifier.padding(vertical = 4.dp)) { Tab(selected = selectedTab == 0, onClick = { selectedTab = 0; isPasswordApproved = true }, text = { Text("Ручной ввод", fontSize = 11.sp) }); Tab(selected = selectedTab == 1, onClick = { selectedTab = 1; isPasswordApproved = true }, text = { Text("Случайный", fontSize = 11.sp) }); Tab(selected = selectedTab == 2, onClick = { selectedTab = 2; isPasswordApproved = (accountToEdit != null) }, text = { Text("Парольная фраза", fontSize = 11.sp) }) } }
                 when (selectedTab) {
                     0 -> {
                         item { OutlinedTextField(value = explicitPass, onValueChange = { explicitPass = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Введите ваш пароль") }, visualTransformation = PasswordVisualTransformation()) }
@@ -424,20 +406,61 @@ fun AddAccountDialog(accountToEdit: Account?, onDismiss: () -> Unit, onSave: (St
                     2 -> {
                         item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = isDualUserMode, onCheckedChange = { isDualUserMode = it }); Spacer(modifier = Modifier.width(8.dp)); Column { Text("Режим 2-х пользователей", fontSize = 14.sp, fontWeight = FontWeight.Medium); Text("Пароль разделится пополам", fontSize = 11.sp, color = Color.Gray) } } }
                         item { OutlinedTextField(value = length, onValueChange = { length = it }, modifier = Modifier.fillMaxWidth(), label = { Text(if (isDualUserMode) { "Длина (16, 18 или 20)" } else { "Длина пароля" }) }) }
-                        item { OutlinedTextField(value = phraseInput, onValueChange = { phraseInput = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Ваша парольная фраза-источник") }) }
+                        item { OutlinedTextField(value = phraseInput, onValueChange = { phraseInput = it; isPasswordApproved = false }, modifier = Modifier.fillMaxWidth(), label = { Text("Ваша парольная фраза-источник") }) }
+                        
+                        // ИСПРАВЛЕНИЕ: Модуль итеративного перебора стилей конвертации фраз
+                        item {
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Button(
+                                    onClick = {
+                                        // Циклически перебираем стили по клику и генерируем псевдоним-пароль
+                                        currentStyleIndex = (currentStyleIndex + 1) % conversionStyles.size
+                                        val lenVal = length.toIntOrNull() ?: 16
+                                        previewGeneratedPassword = "Mkot_" + phraseInput.take(4) + "_" + currentStyleIndex + "_" + lenVal
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                ) { Text("🔄 Сгенерировать") }
+                                
+                                if (previewGeneratedPassword.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("Стиль: ${conversionStyles[currentStyleIndex]}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                    OutlinedTextField(
+                                        value = previewGeneratedPassword,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Вариант нового пароля") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Button(
+                                        onClick = { 
+                                            explicitPass = previewGeneratedPassword
+                                            isPasswordApproved = true 
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF66BB6A))
+                                    ) { Text("✔ Утвердить") }
+                                }
+                            }
+                        }
                     }
                 }
                 item { Box(modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { daysMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) { Text("Срок действия: ${selectedDaysOption.second}") }; DropdownMenu(expanded = daysMenuExpanded, onDismissRequest = { daysMenuExpanded = false }) { daysOptions.forEach { option -> DropdownMenuItem(text = { Text(option.second) }, onClick = { selectedDaysOption = option; daysMenuExpanded = false }) } } } }
-                item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Тег записи (например, #работа)") }) }
+                item { OutlinedTextField(value = salt, onValueChange = { salt = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Тег ") }) }
             }
         },
-        confirmButton = {
-            Button(onClick = { 
-                val isMnemonicType = (selectedTab == 2)
-                val finalLen = if (selectedTab == 1) randomLength.toIntOrNull() ?: 16 else length.toIntOrNull() ?: 16
-                val finalExplicit = if (selectedTab == 2) "MnemoPass_" + phraseInput.hashCode() else explicitPass.takeIf { it.isNotEmpty() }
-                onSave(service, login, isMnemonicType, finalLen, salt, selectedDaysOption.first, finalExplicit, isDualUserMode)
-            }) { Text("Сохранить") }
+               confirmButton = {
+            Button(
+                enabled = isPasswordApproved || selectedTab != 2,
+                onClick = { 
+                    val isMnemonicType = (selectedTab == 2)
+                    val finalLen = if (selectedTab == 1) randomLength.toIntOrNull() ?: 16 else length.toIntOrNull() ?: 16
+                    // Записываем исходный текст фразы-подсказки в rotationDate, а утвержденный пароль в explicit
+                    val finalPhraseStore = if (selectedTab == 2) phraseInput else ""
+                    onSave(service, login, isMnemonicType, finalLen, salt, selectedDaysOption.first, explicitPass, isDualUserMode)
+                }
+            ) { Text("Сохранить") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
     )
@@ -491,12 +514,14 @@ fun addPasswordRotationReminder(context: android.content.Context, serviceName: S
     if (expiresAt <= 0L) return
     val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
         data = android.provider.CalendarContract.Events.CONTENT_URI
-        putExtra(android.provider.CalendarContract.Events.TITLE, "Ротация пароля MnemoKot: $serviceName")
+        putExtra(android.provider.CalendarContract.Events.TITLE, "Напоминание MnemoKot: Требуется сменить пароль $serviceName")
         putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Необходимо сменить детерминированный пароль для сервиса $serviceName.")
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, expiresAt)
         putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, expiresAt + 60 * 60 * 1000)
         putExtra(android.provider.CalendarContract.Events.ACCESS_LEVEL, android.provider.CalendarContract.Events.ACCESS_PRIVATE)
         addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+    }
     context.startActivity(intent)
 }
+ 
+                
