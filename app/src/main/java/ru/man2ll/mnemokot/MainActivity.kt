@@ -86,7 +86,6 @@ fun MainNavigationDrawerContainer(
     val scope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf("vault") }
     
-    // Получаем живое имя текущего запущенного профиля сейфа
     val activeProfileId by sessionManager.activeProfileId.collectAsState()
     val accountsState by vaultViewModel.accounts.collectAsState()
     val profileName = remember(activeProfileId, accountsState) {
@@ -146,7 +145,7 @@ fun MainNavigationDrawerContainer(
                     title = {
                         Text(
                             text = when (currentScreen) {
-                                "vault" -> profileName // ИСПРАВЛЕНИЕ: Вместо "Журнал сейфа" пишем статус профиля
+                                "vault" -> profileName
                                 "audit" -> "Панель рисков"
                                 else -> "Резервное копирование"
                             },
@@ -167,7 +166,11 @@ fun MainNavigationDrawerContainer(
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                 when (currentScreen) {
-                    "vault" -> VaultScreen(viewModel = vaultViewModel)
+                    // ФИКС: Передаем инжектированную во фрагмент masterViewModel внутрь экрана журнала
+                    "vault" -> VaultScreen(viewModel = vaultViewModel, masterAuthViewModel = (LocalContext.current as MainActivity).run { 
+                        val masterModel: MasterAuthViewModel by viewModels()
+                        masterModel
+                    })
                     "audit" -> AuditScreen(viewModel = auditViewModel)
                     "backup" -> BackupScreen(viewModel = backupViewModel)
                 }
