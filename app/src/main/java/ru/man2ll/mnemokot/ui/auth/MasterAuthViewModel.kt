@@ -59,25 +59,32 @@ class MasterAuthViewModel @Inject constructor(
             passChars.fill(' ')
             
             repository.setupMasterPassword(securedHash)
-            _uiState.value = MasterUiState.AccessGranted
+            checkMasterStatus() // Перечитываем стейт для мгновенного пуска биометрии
         }
     }
 
-    fun onVerifyMasterPassword(password: String) {
+    fun onVerifyMasterPassword(password: String): Boolean {
         _errorMessage.value = null
-        viewModelScope.launch {
-            val passChars = password.toCharArray()
-            val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-            val testHash = cryptoEngine.hashPin(passChars, staticSalt)
-            passChars.fill(' ')
+        var isValid = false
+        val passChars = password.toCharArray()
+        val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
+        val testHash = cryptoEngine.hashPin(passChars, staticSalt)
+        passChars.fill(' ')
 
-            val isValid = repository.verifyMasterPassword(testHash)
-            if (isValid) {
-                _uiState.value = MasterUiState.AccessGranted
-            } else {
-                _errorMessage.value = "Неверный глобальный мастер-пароль!"
+        // Выполняем блокирующе для синхронных проверок в диалогах UI
+        run {
+            val job = viewModelScope.launch {
+                isValid = repository.verifyMasterPassword(testHash)
             }
+            while (!job.isCompleted) { /* wait */ }
         }
+
+        if (isValid) {
+            _uiState.value = MasterUiState.AccessGranted
+        } else {
+            _errorMessage.value = "Неверный глобальный Мастер-пароль!"
+        }
+        return isValid
     }
 
     fun onBiometricSuccess() {
@@ -85,8 +92,12 @@ class MasterAuthViewModel @Inject constructor(
     }
 
     fun setBiometricPreference(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.setBiometricEnabled(enabled)
+        // Блокирующий запуск для гарантированного сохранения перед вызовом установки пароля
+        run {
+            val job = viewModelScope.launch {
+                repository.setBiometricEnabled(enabled)
+            }
+            while (!job.isCompleted) { /* wait */ }
         }
     }
 }
