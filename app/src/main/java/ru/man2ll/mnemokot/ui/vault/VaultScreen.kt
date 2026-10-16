@@ -305,6 +305,8 @@ fun AccountItem(
     onEditClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    // ФИКС: Локально инициализируем буфер обмена для этой карточки учетной записи
+    val clipboardManager = LocalClipboardManager.current
     var showQrDialog by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
 
@@ -332,7 +334,6 @@ fun AccountItem(
                     Text("Срок действия: Вечный", fontSize = 12.sp, color = Color.LightGray) 
                 }
                 
-                // Отображение меток времени жизненного цикла записи
                 Text("Установлен: ${dateFormat.format(account.createdAt)}", fontSize = 10.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -378,6 +379,7 @@ fun AccountItem(
         )
     }
 }
+
 @Composable
 fun AddAccountDialog(
     accountToEdit: Account?, 
