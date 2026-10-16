@@ -62,13 +62,13 @@ fun AuthScreen(
                     pinInput = pinInput,
                     error = errorMessage,
                     onKeyClick = viewModel::onPinKeyClick,
-                    onBackClick = viewModel::cancelCreateProfile
+                    onBackClick = viewModel::cancelCreateProfile,
+                    onConfirmClick = { viewModel.triggerManualVerification() }
                 )
             }
         }
     }
 }
-
 @Composable
 fun ProfileSelectionView(
     profiles: List<UserProfile>,
@@ -196,7 +196,8 @@ fun EnterPinView(
     pinInput: String,
     error: String?,
     onKeyClick: (String) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onConfirmClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -214,18 +215,21 @@ fun EnterPinView(
         }
         
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "Введите PIN-код для разблокировки сейфа", fontSize = 14.sp, color = Color.Gray)
+        Text(text = "Введите PIN-код", fontSize = 14.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            repeat(4) { index ->
-                val isFilled = index < pinInput.length
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(if (isFilled) MaterialTheme.colorScheme.primary else Color.DarkGray)
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(16.dp)) {
+            if (pinInput.isEmpty()) {
+                Text("-", fontSize = 16.sp, color = Color.DarkGray, fontWeight = FontWeight.Bold)
+            } else {
+                repeat(pinInput.length) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
         }
 
@@ -265,6 +269,15 @@ fun EnterPinView(
                     }
                 }
             }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onConfirmClick,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

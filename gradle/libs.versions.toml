@@ -17,6 +17,7 @@ crypto = "1.1.0-alpha06"
 junit = "4.13.2"
 zxing = "3.5.3"
 zxing-embedded = "4.3.0"
+biometric = "1.2.0-alpha05"
 
 [libraries]
 # Core AndroidX
@@ -51,6 +52,9 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 #ZXing (QR service)
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxing-embedded" }
+
+#Подключение androidx.biometric
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

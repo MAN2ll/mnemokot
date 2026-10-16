@@ -6,7 +6,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
@@ -39,25 +38,26 @@ class AuthViewModel @Inject constructor(
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     init {
-        observeProfiles()
+        loadProfilesState()
     }
 
-    private fun observeProfiles() {
+    fun loadProfilesState() {
         viewModelScope.launch {
-            repository.getProfiles().collectLatest { profiles ->
-                val activeId = sessionManager.activeProfileId.value
-                if (profiles.isEmpty()) {
-                    _uiState.value = AuthUiState.CreateProfile
-                } else if (activeId == null) {
-                    _uiState.value = AuthUiState.ProfileSelection(profiles)
+            _uiState.value = AuthUiState.Loading
+            val profiles = repository.getProfiles().first()
+            val activeId = sessionManager.activeProfileId.value
+            
+            if (profiles.isEmpty()) {
+                _uiState.value = AuthUiState.CreateProfile
+            } else if (activeId == null) {
+                _uiState.value = AuthUiState.ProfileSelection(profiles)
+            } else {
+                val activeProfile = profiles.firstOrNull { it.id == activeId }
+                if (activeProfile != null) {
+                    val remaining = repository.getRemainingAttempts(activeId)
+                    _uiState.value = AuthUiState.EnterPin(activeProfile.profileName, remaining)
                 } else {
-                    val activeProfile = profiles.firstOrNull { it.id == activeId }
-                    if (activeProfile != null) {
-                        val remaining = repository.getRemainingAttempts(activeId)
-                        _uiState.value = AuthUiState.EnterPin(activeProfile.profileName, remaining)
-                    } else {
-                        _uiState.value = AuthUiState.ProfileSelection(profiles)
-                    }
+                    _uiState.value = AuthUiState.ProfileSelection(profiles)
                 }
             }
         }
@@ -67,15 +67,20 @@ class AuthViewModel @Inject constructor(
         _pinInput.value = ""
         _errorMessage.value = null
         sessionManager.selectProfile(profile.id)
+        loadProfilesState()
     }
 
     fun navigateToCreateProfile() {
+        _pinInput.value = ""
+        _errorMessage.value = null
         _uiState.value = AuthUiState.CreateProfile
     }
 
     fun cancelCreateProfile() {
+        _pinInput.value = ""
+        _errorMessage.value = null
         sessionManager.logout()
-        observeProfiles()
+        loadProfilesState()
     }
 
     fun onCreateProfile(name: String, pin: String) {
@@ -90,19 +95,31 @@ class AuthViewModel @Inject constructor(
             pinChars.fill(' ')
             val newId = repository.createProfile(name, securedHash)
             sessionManager.selectProfile(newId)
+            loadProfilesState()
         }
     }
 
     fun onPinKeyClick(key: String) {
         _errorMessage.value = null
+        val currentPin = _pinInput.value
         if (key == "C") {
-            if (_pinInput.value.isNotEmpty()) _pinInput.value = _pinInput.value.dropLast(1)
+            if (currentPin.isNotEmpty()) _pinInput.value = currentPin.dropLast(1)
         } else {
-            if (_pinInput.value.length < 6) _pinInput.value += key
+            if (currentPin.length < 6) {
+                val newPin = currentPin + key
+                _pinInput.value = newPin
+                if (newPin.length == 6) {
+                    verifyPin()
+                }
+            }
         }
-
+    }
+    
+    fun triggerManualVerification() {
         if (_pinInput.value.length >= 4) {
             verifyPin()
+        } else {
+            _errorMessage.value = "PIN-код должен быть от 4 до 6 цифр"
         }
     }
 
@@ -129,6 +146,7 @@ class AuthViewModel @Inject constructor(
                     val result = repository.incrementFailedAttempts(profileId)
                     if (result == -1) {
                         sessionManager.logout()
+                        loadProfilesState()
                         _errorMessage.value = "Профиль уничтожен из-за брутфорса!"
                     } else {
                         val remaining = repository.getRemainingAttempts(profileId)

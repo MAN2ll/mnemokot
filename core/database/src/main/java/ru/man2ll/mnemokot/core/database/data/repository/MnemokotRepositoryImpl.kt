@@ -6,13 +6,13 @@ import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
+import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
 import ru.man2ll.mnemokot.core.database.data.mapper.toDomain
 import ru.man2ll.mnemokot.core.database.data.mapper.toEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
-import ru.man2ll.mnemokot.core.database.domain.model.AccountEntity
-import ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
+import ru.man2ll.mnemokot.core.database.domain.model.MasterSettingsEntity
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +20,7 @@ import javax.inject.Singleton
 class MnemokotRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val accountDao: AccountDao,
+    private val masterSettingsDao: MasterSettingsDao,
     private val passwordGenerator: PasswordGenerator
 ) : MnemokotRepository {
 
@@ -28,7 +29,7 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createProfile(name: String, pin: String?): Long {
-        val entity = UserProfileEntity(profileName = name, pinHash = pin)
+        val entity = ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity(profileName = name, pinHash = pin)
         return profileDao.insertProfile(entity)
     }
 
@@ -140,5 +141,31 @@ class MnemokotRepositoryImpl @Inject constructor(
         }
 
         return Pair(true, finalMessage)
+    }
+
+    override suspend fun isMasterPasswordSet(): Boolean {
+        val settings = masterSettingsDao.getSettings()
+        return settings?.masterPasswordHash != null
+    }
+
+    override suspend fun setupMasterPassword(passwordHash: String): Boolean {
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = passwordHash)
+        masterSettingsDao.saveSettings(current.copy(masterPasswordHash = passwordHash, updatedAt = System.currentTimeMillis()))
+        return true
+    }
+
+    override suspend fun verifyMasterPassword(passwordHash: String): Boolean {
+        val settings = masterSettingsDao.getSettings() ?: return false
+        return settings.masterPasswordHash == passwordHash
+    }
+
+    override suspend fun isBiometricEnabled(): Boolean {
+        val settings = masterSettingsDao.getSettings()
+        return settings?.isBiometricEnabled ?: false
+    }
+
+    override suspend fun setBiometricEnabled(enabled: Boolean) {
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = null)
+        masterSettingsDao.saveSettings(current.copy(isBiometricEnabled = enabled, updatedAt = System.currentTimeMillis()))
     }
 }
