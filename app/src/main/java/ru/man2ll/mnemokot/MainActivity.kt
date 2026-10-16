@@ -165,12 +165,15 @@ fun MainNavigationDrawerContainer(
             }
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                val activityContext = androidx.compose.ui.platform.LocalContext.current as MainActivity
                 when (currentScreen) {
-                    // ФИКС: Передаем инжектированную во фрагмент masterViewModel внутрь экрана журнала
-                    "vault" -> VaultScreen(viewModel = vaultViewModel, masterAuthViewModel = (LocalContext.current as MainActivity).run { 
-                        val masterModel: MasterAuthViewModel by viewModels()
-                        masterModel
-                    })
+                    "vault" -> VaultScreen(
+                        viewModel = vaultViewModel, 
+                        masterAuthViewModel = activityContext.run {
+                            val masterModel: MasterAuthViewModel by viewModels()
+                            masterModel
+                        }
+                    )
                     "audit" -> AuditScreen(viewModel = auditViewModel)
                     "backup" -> BackupScreen(viewModel = backupViewModel)
                 }
