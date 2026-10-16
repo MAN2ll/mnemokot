@@ -1,5 +1,6 @@
 package ru.man2ll.mnemokot.ui.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,6 +32,11 @@ fun AuthScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pinInput by viewModel.pinInput.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+
+    // ИСПРАВЛЕНИЕ: Перехватываем системную кнопку "Назад" лаунчера Android
+    BackHandler(enabled = uiState !is AuthUiState.ProfileSelection) {
+        viewModel.cancelCreateProfile() // Мягко возвращаем к выбору профилей
+    }
 
     Box(
         modifier = Modifier
@@ -69,6 +75,7 @@ fun AuthScreen(
         }
     }
 }
+
 @Composable
 fun ProfileSelectionView(
     profiles: List<UserProfile>,
