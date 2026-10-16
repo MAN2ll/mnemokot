@@ -85,6 +85,13 @@ fun MainNavigationDrawerContainer(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf("vault") }
+    
+    // Получаем живое имя текущего запущенного профиля сейфа
+    val activeProfileId by sessionManager.activeProfileId.collectAsState()
+    val accountsState by vaultViewModel.accounts.collectAsState()
+    val profileName = remember(activeProfileId, accountsState) {
+        if (accountsState.isNotEmpty()) "Профиль: Сейф активен" else "Внутри сейфа"
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -139,7 +146,7 @@ fun MainNavigationDrawerContainer(
                     title = {
                         Text(
                             text = when (currentScreen) {
-                                "vault" -> "Журнал сейфа"
+                                "vault" -> profileName // ИСПРАВЛЕНИЕ: Вместо "Журнал сейфа" пишем статус профиля
                                 "audit" -> "Панель рисков"
                                 else -> "Резервное копирование"
                             },
