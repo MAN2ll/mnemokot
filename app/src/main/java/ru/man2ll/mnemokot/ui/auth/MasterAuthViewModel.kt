@@ -47,57 +47,47 @@ class MasterAuthViewModel @Inject constructor(
         }
     }
 
-    fun onSetupMasterPassword(password: String) {
+    fun onSetupMasterPassword(password: String, enableBio: Boolean) {
         if (password.length < 6) {
             _errorMessage.value = "Мастер-пароль должен быть не менее 6 символов"
             return
         }
         viewModelScope.launch {
+            // Асинхронно и безопасно сохраняем предпочтение биометрии и пароль подряд
+            repository.setBiometricEnabled(enableBio)
+            
             val passChars = password.toCharArray()
             val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
             val securedHash = cryptoEngine.hashPin(passChars, staticSalt)
             passChars.fill(' ')
             
             repository.setupMasterPassword(securedHash)
-            checkMasterStatus() // Перечитываем стейт для мгновенного пуска биометрии
+            
+            // Мгновенно предоставляем доступ без перезапуска
+            _uiState.value = MasterUiState.AccessGranted
         }
     }
 
-    fun onVerifyMasterPassword(password: String): Boolean {
+    fun onVerifyMasterPassword(password: String, onResult: (Boolean) -> Unit) {
         _errorMessage.value = null
-        var isValid = false
-        val passChars = password.toCharArray()
-        val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-        val testHash = cryptoEngine.hashPin(passChars, staticSalt)
-        passChars.fill(' ')
+        viewModelScope.launch {
+            val passChars = password.toCharArray()
+            val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
+            val testHash = cryptoEngine.hashPin(passChars, staticSalt)
+            passChars.fill(' ')
 
-        // Выполняем блокирующе для синхронных проверок в диалогах UI
-        run {
-            val job = viewModelScope.launch {
-                isValid = repository.verifyMasterPassword(testHash)
+            val isValid = repository.verifyMasterPassword(testHash)
+            if (isValid) {
+                _uiState.value = MasterUiState.AccessGranted
+                onResult(true)
+            } else {
+                _errorMessage.value = "Неверный Мастер-пароль!"
+                onResult(false)
             }
-            while (!job.isCompleted) { /* wait */ }
         }
-
-        if (isValid) {
-            _uiState.value = MasterUiState.AccessGranted
-        } else {
-            _errorMessage.value = "Неверный глобальный Мастер-пароль!"
-        }
-        return isValid
     }
 
     fun onBiometricSuccess() {
         _uiState.value = MasterUiState.AccessGranted
-    }
-
-    fun setBiometricPreference(enabled: Boolean) {
-        // Блокирующий запуск для гарантированного сохранения перед вызовом установки пароля
-        run {
-            val job = viewModelScope.launch {
-                repository.setBiometricEnabled(enabled)
-            }
-            while (!job.isCompleted) { /* wait */ }
-        }
     }
 }
