@@ -222,7 +222,8 @@ fun RandomGeneratorDialog(
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Криптографическая энтропия:", style = MaterialTheme.typography.bodyMedium)
-                        Text("${String.format("%.1f", uiState.result.entropyBits)} bits", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        val entropyText = remember(uiState.result.entropyBits) { String.format(java.util.Locale.US, "%.1f", uiState.result.entropyBits) }
+                        Text(text = "$entropyText bits", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Прописные (A-Z):", style = MaterialTheme.typography.bodyMedium)
