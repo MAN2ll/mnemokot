@@ -156,3 +156,114 @@ fun RandomGeneratorDialog(
                     Switch(checked = uiState.config.includeLowercase, onCheckedChange = { viewModel.onIncludeLowercaseChanged(it) })
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Цифры", style = MaterialTheme.typography.bodyMedium)
+                        Text("0-9", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = uiState.config.includeDigits, onCheckedChange = { viewModel.onIncludeDigitsChanged(it) })
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Специальные символы", style = MaterialTheme.typography.bodyMedium)
+                        Text("!@#\$%^&*", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = uiState.config.includeSymbols, onCheckedChange = { viewModel.onIncludeSymbolsChanged(it) })
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Исключить похожие символов", style = MaterialTheme.typography.bodyMedium)
+                        Text("Убирает l, I, 1, o, O, 0 для читаемости", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = uiState.config.excludeSimilar, onCheckedChange = { viewModel.onExcludeSimilarChanged(it) })
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(text = "Сгенерированный пароль", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = uiState.result.password,
+                    onValueChange = {},
+                    readOnly = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        Row {
+                            IconButton(onClick = { viewModel.regeneratePassword() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Перегенерировать")
+                            }
+                            IconButton(onClick = { clipboardManager.setText(AnnotatedString(uiState.result.password)) }) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Копировать")
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(text = "Анализ стойкости и состава ИБ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Криптографическая энтропия:", style = MaterialTheme.typography.bodyMedium)
+                        Text("${String.format("%.1f", uiState.result.entropyBits)} bits", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Прописные (A-Z):", style = MaterialTheme.typography.bodyMedium)
+                        Text("${uiState.result.uppercaseCount}", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Строчные (a-z):", style = MaterialTheme.typography.bodyMedium)
+                        Text("${uiState.result.lowercaseCount}", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Цифры (0-9):", style = MaterialTheme.typography.bodyMedium)
+                        Text("${uiState.result.digitsCount}", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Спецсимволы:", style = MaterialTheme.typography.bodyMedium)
+                        Text("${uiState.result.symbolsCount}", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismissRequest) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            onPasswordApplied(uiState.result.password)
+                            onDismissRequest()
+                        },
+                        enabled = uiState.result.password.isNotEmpty()
+                    ) {
+                        Text("Утвердить пароль")
+                    }
+                }
+            }
+        }
+    }
+}
