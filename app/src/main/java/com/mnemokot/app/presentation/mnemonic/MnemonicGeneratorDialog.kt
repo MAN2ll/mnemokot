@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -144,7 +145,6 @@ fun MnemonicGeneratorDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
                 OutlinedTextField(
                     value = uiState.config.phrase,
                     onValueChange = { viewModel.onPhraseChanged(it) },
@@ -155,7 +155,8 @@ fun MnemonicGeneratorDialog(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-                                Row(
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -261,7 +262,6 @@ fun MnemonicGeneratorDialog(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
-
                 Text(text = "Целевая длина пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -325,30 +325,32 @@ fun MnemonicGeneratorDialog(
                         Text(text = uiState.steps.generatedSuffix.ifEmpty { "отсутствует" }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column {
-                    Text(text = "5. Утвержденный результат:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    Text(text = uiState.steps.finalPassword.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.error)
-                        }
+                        Text(text = "5. Утвержденный результат:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(text = uiState.steps.finalPassword.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.error)
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Row(
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
-                    ) {
+                ) {
                     TextButton(onClick = onDismissRequest) {
-                    Text("Отмена")
+                        Text("Отмена")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                    onClick = {
-                    onPasswordApplied(uiState.steps.finalPassword)
-                    onDismissRequest()
-                    },
-                    enabled = uiState.steps.finalPassword.isNotEmpty()
+                        onClick = {
+                            onPasswordApplied(uiState.steps.finalPassword)
+                            onDismissRequest()
+                        },
+                        enabled = uiState.steps.finalPassword.isNotEmpty()
                     ) {
-                    Text("Утвердить пароль")
-                                    }
-                                }
-                                }
-                            }
-                        }
+                        Text("Утвердить пароль")
                     }
+                }
+            }
+        }
+    }
+}
