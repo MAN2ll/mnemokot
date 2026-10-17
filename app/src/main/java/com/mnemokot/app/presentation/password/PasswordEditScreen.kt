@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,10 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mnemokot.app.presentation.mnemonic.MnemonicGeneratorDialog
+import com.mnemokot.app.presentation.mnemonic.MnemonicGeneratorViewModel
 import com.mnemokot.app.presentation.random.RandomGeneratorDialog
+import com.mnemokot.app.presentation.random.RandomGeneratorViewModel
 
 @Composable
 fun PasswordEditScreen(
+    mnemonicViewModel: MnemonicGeneratorViewModel,
+    randomViewModel: RandomGeneratorViewModel,
     modifier: Modifier = Modifier
 ) {
     var passwordInput by remember { mutableStateOf("") }
@@ -60,6 +63,7 @@ fun PasswordEditScreen(
 
     if (showRandomDialog) {
         RandomGeneratorDialog(
+            viewModel = randomViewModel,
             onDismissRequest = { showRandomDialog = false },
             onPasswordApplied = { generatedPassword ->
                 passwordInput = generatedPassword
@@ -69,6 +73,7 @@ fun PasswordEditScreen(
 
     if (showMnemonicDialog) {
         MnemonicGeneratorDialog(
+            viewModel = mnemonicViewModel,
             onDismissRequest = { showMnemonicDialog = false },
             onPasswordApplied = { generatedPassword ->
                 passwordInput = generatedPassword
