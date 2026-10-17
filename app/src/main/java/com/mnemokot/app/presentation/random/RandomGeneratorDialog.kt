@@ -48,13 +48,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun RandomGeneratorDialog(
+    viewModel: RandomGeneratorViewModel,
     onDismissRequest: () -> Unit,
-    onPasswordApplied: (String) -> Unit,
-    viewModel: RandomGeneratorViewModel = hiltViewModel()
+    onPasswordApplied: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
@@ -111,7 +110,7 @@ fun RandomGeneratorDialog(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "Данный генератор использует криптографически стойкий алгоритм SecureRandom. Пароль формируется случайным образом на устройстве без использования интернета, гарантируя равномерное распределение энтропии.",
+                            text = "Данный генератор использует криптографически стойкий алгоритм SecureRandom. Пароль сформируется случайным образом на устройстве без использования интернета, гарантируя равномерное распределение энтропии.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
