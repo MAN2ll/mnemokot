@@ -1,4 +1,4 @@
-package ru.mnemokot.app.presentation.mnemonic
+package ru.man2ll.mnemokot.presentation.mnemonic
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
