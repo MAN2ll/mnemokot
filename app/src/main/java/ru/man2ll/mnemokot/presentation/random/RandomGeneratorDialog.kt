@@ -1,4 +1,4 @@
-package com.mnemokot.app.presentation.random
+package ru.mnemokot.app.presentation.random
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
