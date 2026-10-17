@@ -1,6 +1,6 @@
-package com.mnemokot.core.crypto.domain.generator
+package ru.mnemokot.core.crypto.domain.generator
 
-import com.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
+import ru.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
