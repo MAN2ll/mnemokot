@@ -1,8 +1,8 @@
-package ru.mnemokot.core.crypto.domain.generator
+package ru.man2ll.mnemokot.core.crypto.domain.generator
 
-import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
-import ru.mnemokot.core.crypto.domain.model.MnemonicGenerationSteps
-import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicConfig
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicGenerationSteps
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMethod
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
