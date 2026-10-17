@@ -9,10 +9,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ru.man2ll.mnemokot.app.presentation.mnemonic.MnemonicGeneratorDialog
-import ru.man2ll.mnemokot.app.presentation.mnemonic.MnemonicGeneratorViewModel
-import ru.man2ll.mnemokot.app.presentation.random.RandomGeneratorDialog
-import ru.man2ll.mnemokot.app.presentation.random.RandomGeneratorViewModel
+import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorDialog
+import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
+import ru.man2ll.mnemokot.presentation.random.RandomGeneratorDialog
+import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
+
 
 @Composable
 fun GeneratorScreen(
