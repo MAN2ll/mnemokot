@@ -9,9 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
-import ru.man2ll.mnemokot.app.presentation.password.PasswordEditScreen
-import ru.man2ll.mnemokot.app.presentation.mnemonic.MnemonicGeneratorViewModel
-import ru.man2ll.mnemokot.app.presentation.random.RandomGeneratorViewModel
+import ru.man2ll.mnemokot.presentation.password.PasswordEditScreen
+import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
+import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.man2ll.mnemokot.ui.theme.MnemoKotTheme
 
