@@ -66,7 +66,7 @@ fun RandomGeneratorDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
+                .fillMaxHeight(0.9f)
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -135,7 +135,6 @@ fun RandomGeneratorDialog(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-
                 Text(text = "Используемые символы", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -156,7 +155,8 @@ fun RandomGeneratorDialog(
                     Switch(checked = uiState.config.includeLowercase, onCheckedChange = { viewModel.onIncludeLowercaseChanged(it) })
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Цифры", style = MaterialTheme.typography.bodyMedium)
                         Text("0-9", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -176,14 +176,13 @@ fun RandomGeneratorDialog(
 
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Исключить похожие символов", style = MaterialTheme.typography.bodyMedium)
+                        Text("Исключить похожие символы", style = MaterialTheme.typography.bodyMedium)
                         Text("Убирает l, I, 1, o, O, 0 для читаемости", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = uiState.config.excludeSimilar, onCheckedChange = { viewModel.onExcludeSimilarChanged(it) })
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-
                 Text(text = "Сгенерированный пароль", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
