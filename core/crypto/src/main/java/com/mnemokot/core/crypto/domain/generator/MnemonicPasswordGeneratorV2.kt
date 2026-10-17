@@ -10,7 +10,6 @@ import javax.inject.Singleton
 @Singleton
 class MnemonicPasswordGeneratorV2 @Inject constructor() {
 
-    // Система Б ГОСТ 7.79-2000
     private val gostTable = mapOf(
         'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d", 'е' to "e", 'ё' to "yo",
         'ж' to "zh", 'з' to "z", 'и' to "i", 'й' to "j", 'к' to "k", 'л' to "l", 'м' to "m",
@@ -19,7 +18,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         'ъ' to "``", 'ы' to "y", 'ь' to "`", 'э' to "eh", 'ю' to "yu", 'я' to "ya"
     )
 
-    // Карта соответствия кириллицы и латиницы на стандартной клавиатуре (QWERTY-сдвиг)
     private val qwertyMap = mapOf(
         'й' to "q", 'ц' to "w", 'у' to "e", 'к' to "r", 'е' to "t", 'н' to "y", 'г' to "u",
         'ш' to "i", 'щ' to "o", 'з' to "p", 'х' to "[", 'ъ' to "]", 'ф' to "a", 'ы' to "s",
@@ -28,12 +26,11 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         'т' to "n", 'ь' to "m", 'б' to ",", 'ю' to ".", 'ё' to "`"
     )
 
-    // Многоуровневые Leet-мутации для защиты от повторения символов
     private val leetMap = mapOf(
-        'a' to listOf('@', '4'), 'b' to listOf('8', '6'), 'c' to listOf('(', '{'),
-        'e' to listOf('3', '€'), 'g' to listOf('9', '&'), 'i' to listOf('1', '!'),
-        'k' to listOf('<', 'l'), 'l' to listOf('|', '1'), 'o' to listOf('0', '*'),
-        's' to listOf('\$', '5'), 't' to listOf('7', '+'), 'z' to listOf('2', '%')
+        'a' to listOf("@", "4"), 'b' to listOf("8", "6"), 'c' to listOf("(", "{"),
+        'e' to listOf("3", "€"), 'g' to listOf("9", "&"), 'i' to listOf("1", "!"),
+        'k' to listOf("<", "l"), 'l' to listOf("|", "1"), 'o' to listOf("0", "*"),
+        's' to listOf("\$", "5"), 't' to listOf("7", "+"), 'z' to listOf("2", "%")
     )
 
     private fun applyGostTranslit(word: String): String {
@@ -41,8 +38,10 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         for (ch in word.lowercase(Locale.ROOT)) {
             sb.append(gostTable[ch] ?: ch.toString())
         }
-        return if (word.isNotEmpty() && word[0].isUpperCase() && sb.isNotEmpty()) {
-            sb[0].uppercaseChar().toString() + sb.substring(1)
+        return if (word.isNotEmpty() && word.all { it.isUpperCase() } && sb.isNotEmpty()) {
+            sb.toString().uppercase(Locale.ROOT)
+        } else if (word.isNotEmpty() && word[0].isUpperCase() && sb.isNotEmpty()) {
+            sb.toString().substring(0, 1).uppercase(Locale.ROOT) + sb.toString().substring(1)
         } else {
             sb.toString()
         }
@@ -55,20 +54,12 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         }
         return sb.toString()
     }
-}
-// Путь к файлу: core/crypto/src/main/java/com/mnemokot/core/crypto/domain/generator/MnemonicPasswordGeneratorV2.kt
-// Раздел 2: Реализация алгоритмов и главного метода генерации
-
-    /**
-     * Точка входа для генерации паролей комбайна мнемотехник. Полностью детерминирована.
-     */
     fun generateMnemonicV2(config: MnemonicConfig): MnemonicGenerationSteps {
         if (config.phrase.isBlank()) return MnemonicGenerationSteps()
 
         val words = config.phrase.trim().split("\\s+".toRegex())
-        
-        // 1. Формирование суффикса безопасности (хвоста)
         val suffixBuilder = StringBuilder()
+        
         if (config.includeAnchor && config.anchorWord.isNotBlank()) {
             suffixBuilder.append(config.anchorWord.trim())
         }
@@ -82,7 +73,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         }
         val generatedSuffix = suffixBuilder.toString()
 
-        // 2. Обработка базовым методом мнемотехники
         var baseProcessed = ""
         var postProcessed = ""
 
@@ -91,7 +81,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
                 val transliteratedWords = words.map { applyGostTranslit(it) }
                 baseProcessed = transliteratedWords.joinToString("")
 
-                // Применяем умное бюджетирование к корням транслитерированных слов
                 val truncatedWords = if (config.keepRoots) {
                     val budgetForPhrase = maxOf(1, config.targetLength - generatedSuffix.length)
                     allocateWordBudget(transliteratedWords, budgetForPhrase)
@@ -100,7 +89,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
                 }
                 val phase2Text = truncatedWords.joinToString("")
 
-                // Применяем Leet-мутацию дубликатов
                 postProcessed = if (config.mutateRepeats) {
                     mutateDuplicateCharacters(phase2Text)
                 } else {
@@ -110,20 +98,19 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
 
             MnemonicMethod.QWERTY_SHIFT -> {
                 baseProcessed = applyQwertyShift(config.phrase.replace("\\s+".toRegex(), ""))
-                postProcessed = baseProcessed // Для QWERTY оставляем монолитным
+                postProcessed = baseProcessed
             }
 
             MnemonicMethod.ACRONYMS -> {
                 val acronymChars = words.map { word ->
-                    if (word.isNotEmpty()) word[0].toString() else ""
+                    if (word.isNotEmpty()) word.substring(0, 1) else ""
                 }.joinToString("")
                 
                 baseProcessed = applyGostTranslit(acronymChars)
-                postProcessed = baseProcessed // Акронимы по определению короткие
+                postProcessed = baseProcessed
             }
         }
 
-        // 3. Финальная сборка и строгое приведение к targetLength
         val combinedResult = postProcessed + generatedSuffix
         val finalPassword = if (combinedResult.length > config.targetLength) {
             combinedResult.substring(0, config.targetLength)
@@ -145,7 +132,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         val wordBudgets = IntArray(words.size) { 0 }
         var remainingBudget = totalBudget
 
-        // Выделяем по 1 символу на каждое слово для сохранения структуры фразы
         for (i in words.indices) {
             if (remainingBudget > 0) {
                 wordBudgets[i] = 1
@@ -153,7 +139,6 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
             }
         }
 
-        // Пропорциональное заполнение остатков бюджета
         var budgetChanged: Boolean
         do {
             budgetChanged = false
@@ -190,8 +175,9 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
                 var substituted = false
                 if (replacements != null) {
                     for (rep in replacements) {
-                        if (!seen.contains(rep)) {
-                            seen.add(rep)
+                        val repChar = rep.firstOrNull() ?: continue
+                        if (!seen.contains(repChar)) {
+                            seen.add(repChar)
                             sb.append(rep)
                             substituted = true
                             break
@@ -205,3 +191,4 @@ class MnemonicPasswordGeneratorV2 @Inject constructor() {
         }
         return sb.toString()
     }
+}
