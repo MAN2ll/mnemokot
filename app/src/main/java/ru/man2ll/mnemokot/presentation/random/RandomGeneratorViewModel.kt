@@ -2,8 +2,6 @@ package ru.man2ll.mnemokot.presentation.random
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ru.man2ll.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
-import ru.man2ll.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import ru.man2ll.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
+import ru.man2ll.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import javax.inject.Inject
 
 @HiltViewModel
