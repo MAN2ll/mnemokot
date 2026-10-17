@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import dagger.hilt.android.AndroidEntryPoint
-import ru.man2ll.mnemokot.presentation.password.PasswordEditScreen
-import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
-import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dagger.hilt.android.AndroidEntryPoint
 import ru.man2ll.mnemokot.ui.theme.MnemoKotTheme
 
 @AndroidEntryPoint
@@ -31,12 +28,9 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val mnemonicVm: MnemonicGeneratorViewModel = viewModel()
-                    val randomVm: RandomGeneratorViewModel = viewModel()
-                    
-                    PasswordEditScreen(
-                        mnemonicViewModel = mnemonicVm,
-                        randomViewModel = randomVm
+                    ru.man2ll.mnemokot.presentation.password.PasswordEditScreen(
+                        mnemonicViewModel = viewModel(),
+                        randomViewModel = viewModel()
                     )
                 }
             }
