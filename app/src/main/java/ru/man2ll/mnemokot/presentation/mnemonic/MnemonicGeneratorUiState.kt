@@ -1,7 +1,7 @@
 package ru.man2ll.mnemokot.presentation.mnemonic
 
-import com.mnemokot.core.crypto.domain.model.MnemonicConfig
-import com.mnemokot.core.crypto.domain.model.MnemonicGenerationSteps
+import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
+import ru.mnemokot.core.crypto.domain.model.MnemonicGenerationSteps
 
 data class MnemonicGeneratorUiState(
     val config: MnemonicConfig = MnemonicConfig(),
