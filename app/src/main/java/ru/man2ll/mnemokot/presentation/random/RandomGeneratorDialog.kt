@@ -1,4 +1,4 @@
-package ru.mnemokot.app.presentation.random
+package ru.man2ll.mnemokot.presentation.random
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -110,7 +110,7 @@ fun RandomGeneratorDialog(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "Данный генератор использует криптографически стойкий алгоритм SecureRandom. Пароль сформируется случайным образом на устройстве без использования интернета, гарантируя равномерное распределение энтропии.",
+                            text = "Данный генератор использует криптографически стойкий алгоритм SecureRandom. Пароль формируется случайным образом на устройстве без использования интернета, гарантируя равномерное распределение энтропии.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
