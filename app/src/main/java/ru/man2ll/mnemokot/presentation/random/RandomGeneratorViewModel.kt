@@ -10,9 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-import ru.man2ll.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
-import ru.man2ll.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
+import ru.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
+import ru.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import javax.inject.Inject
+
 
 @HiltViewModel
 class RandomGeneratorViewModel @Inject constructor(
