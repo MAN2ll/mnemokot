@@ -7,6 +7,7 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
+
 @Singleton
 class MnemonicPasswordGeneratorV2 @Inject constructor() {
 
