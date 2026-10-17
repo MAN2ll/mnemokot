@@ -1,9 +1,9 @@
-package com.mnemokot.app.presentation.random
+package ru.mnemokot.app.presentation.random
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
-import com.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
+import ru.mnemokot.core.crypto.domain.generator.SecureRandomGenerator
+import ru.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
