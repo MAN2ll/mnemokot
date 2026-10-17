@@ -10,10 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
-import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicConfig
-import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMethod
+import ru.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
+import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
 import javax.inject.Inject
+
 
 @HiltViewModel
 class MnemonicGeneratorViewModel @Inject constructor(
