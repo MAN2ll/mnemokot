@@ -50,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMethod
 
 @Composable
 fun MnemonicGeneratorDialog(
