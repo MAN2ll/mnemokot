@@ -9,7 +9,6 @@ import org.junit.Test
 class SecureRandomGeneratorTest {
 
     private lateinit var generator: SecureRandomGenerator
-    private val symbolsSet = "!@#\$%^&*()-_=+[]{}|;:,.<>?"
     private val similarChars = setOf('l', 'I', '1', 'o', 'O', '0', '5', 'S', '2', 'Z', '8', 'B')
 
     @Before
@@ -26,7 +25,6 @@ class SecureRandomGeneratorTest {
             assertEquals(targetLength, result.password.length)
         }
     }
-
     @Test
     fun testMandatoryCharacterPools() {
         val config = RandomGeneratorConfig(
@@ -40,7 +38,6 @@ class SecureRandomGeneratorTest {
 
         repeat(1000) {
             val result = generator.generate(config)
-            
             assertTrue(result.uppercaseCount > 0)
             assertTrue(result.lowercaseCount > 0)
             assertTrue(result.digitsCount > 0)
@@ -62,11 +59,10 @@ class SecureRandomGeneratorTest {
         repeat(500) {
             val result = generator.generate(config)
             for (ch in result.password) {
-                assertTrue("Пароль содержит похожий символ: $ch", ch !in similarChars)
+                assertTrue(ch !in similarChars)
             }
         }
     }
-
     @Test
     fun testEmptyPoolHandling() {
         val config = RandomGeneratorConfig(
@@ -79,6 +75,6 @@ class SecureRandomGeneratorTest {
         
         val result = generator.generate(config)
         assertEquals("", result.password)
-        assertEquals(0, result.entropyBits, 0.0)
+        assertEquals(0.0, result.entropyBits, 0.001)
     }
 }
