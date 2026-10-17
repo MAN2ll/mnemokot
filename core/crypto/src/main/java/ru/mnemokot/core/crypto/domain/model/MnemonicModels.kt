@@ -1,4 +1,4 @@
-package com.mnemokot.core.crypto.domain.model
+package ru.mnemokot.core.crypto.domain.model
 
 /**
  * Поддерживаемые методы мнемонической генерации в комбайне.
