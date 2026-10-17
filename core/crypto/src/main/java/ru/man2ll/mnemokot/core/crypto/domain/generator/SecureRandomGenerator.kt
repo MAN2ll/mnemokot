@@ -7,6 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log2
 
+
 @Singleton
 class SecureRandomGenerator @Inject constructor() {
 
