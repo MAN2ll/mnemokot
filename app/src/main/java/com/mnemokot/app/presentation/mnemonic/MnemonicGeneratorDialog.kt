@@ -50,14 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.mnemokot.core.crypto.domain.model.MnemonicMethod
 
 @Composable
 fun MnemonicGeneratorDialog(
+    viewModel: MnemonicGeneratorViewModel,
     onDismissRequest: () -> Unit,
-    onPasswordApplied: (String) -> Unit,
-    viewModel: MnemonicGeneratorViewModel = hiltViewModel()
+    onPasswordApplied: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
