@@ -1,12 +1,11 @@
 package ru.man2ll.mnemokot.core.crypto.domain.generator
 
-import ru.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
-import ru.mnemokot.core.crypto.domain.model.RandomGeneratorResult
+import ru.man2ll.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
+import ru.man2ll.mnemokot.core.crypto.domain.model.RandomGeneratorResult
 import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log2
-
 
 @Singleton
 class SecureRandomGenerator @Inject constructor() {
