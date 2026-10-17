@@ -1,4 +1,4 @@
-package com.mnemokot.app.presentation.mnemonic
+package ru.mnemokot.app.presentation.mnemonic
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -50,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.mnemokot.core.crypto.domain.model.MnemonicMethod
+import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
 
 @Composable
 fun MnemonicGeneratorDialog(
