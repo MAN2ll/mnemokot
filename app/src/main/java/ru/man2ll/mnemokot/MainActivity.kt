@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import ru.man2ll.mnemokot.presentation.navigation.AppNavigation
 import ru.man2ll.mnemokot.ui.theme.MnemoKotTheme
 
 @AndroidEntryPoint
@@ -29,7 +27,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation(navController = rememberNavController())
+                    ru.man2ll.mnemokot.presentation.screens.generator.GeneratorScreen()
                 }
             }
         }
