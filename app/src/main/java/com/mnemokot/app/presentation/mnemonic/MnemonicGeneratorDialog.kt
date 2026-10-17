@@ -155,3 +155,200 @@ fun MnemonicGeneratorDialog(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.config.serviceName,
+                        onValueChange = { viewModel.onServiceNameChanged(it) },
+                        label = { Text("Сервис") },
+                        placeholder = { Text("github") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = uiState.config.dateContext,
+                        onValueChange = { viewModel.onDateContextChanged(it) },
+                        label = { Text("Дата (ММГГ)") },
+                        placeholder = { Text("1026") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = uiState.config.anchorWord,
+                    onValueChange = { viewModel.onAnchorWordChanged(it) },
+                    label = { Text("Якорное слово (Соль)") },
+                    placeholder = { Text("СекретноеСлово") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Суффиксы безопасности в конце пароля",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = uiState.config.includeService,
+                            onCheckedChange = { viewModel.onIncludeServiceChanged(it) }
+                        )
+                        Text("Включить имя сервиса (3 буквы в UPPER)", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = uiState.config.includeDate,
+                            onCheckedChange = { viewModel.onIncludeDateChanged(it) }
+                        )
+                        Text("Включить контекстную дату (ММГГ)", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = uiState.config.includeAnchor,
+                            onCheckedChange = { viewModel.onIncludeAnchorChanged(it) }
+                        )
+                        Text("Включить якорное слово", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (uiState.config.method == MnemonicMethod.AMPG_V2) {
+                    Text(
+                        text = "Специфичные настройки метода",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Сохранять корни слов", style = MaterialTheme.typography.bodyMedium)
+                            Text("Пропорциональное усечение длины", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.config.keepRoots, onCheckedChange = { viewModel.onKeepRootsChanged(it) })
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Мутация повторов (Leet)", style = MaterialTheme.typography.bodyMedium)
+                            Text("Подстановка спецсимволов вместо удаления дубликатов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.config.mutateRepeats, onCheckedChange = { viewModel.onMutateRepeatsChanged(it) })
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                Text(text = "Целевая длина пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(12, 16, 20).forEach { length ->
+                        FilterChip(
+                            selected = uiState.config.targetLength == length,
+                            onClick = { viewModel.onTargetLengthChanged(length) },
+                            label = { Text(length.toString()) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(text = "Предпросмотр пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = uiState.steps.finalPassword,
+                    onValueChange = {},
+                    readOnly = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        IconButton(onClick = { clipboardManager.setText(AnnotatedString(uiState.steps.finalPassword)) }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Копировать")
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(text = "Этапы трансформации", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column {
+                        Text(text = "1. Входная фраза:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(text = uiState.steps.sourcePhrase.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column {
+                        Text(text = "2. Базовая трансформация метода:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(text = uiState.steps.baseProcessed.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column {
+                        Text(text = "3. Пост-обработка (Усечение/Мутация):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(text = uiState.steps.postProcessed.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column {
+                        Text(text = "4. Сформированный суффикс:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(text = uiState.steps.generatedSuffix.ifEmpty { "отсутствует" }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column {
+                    Text(text = "5. Утвержденный результат:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(text = uiState.steps.finalPassword.ifEmpty { "..." }, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                    ) {
+                    TextButton(onClick = onDismissRequest) {
+                    Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                    onClick = {
+                    onPasswordApplied(uiState.steps.finalPassword)
+                    onDismissRequest()
+                    },
+                    enabled = uiState.steps.finalPassword.isNotEmpty()
+                    ) {
+                    Text("Утвердить пароль")
+                                    }
+                                }
+                                }
+                            }
+                        }
+                    }
