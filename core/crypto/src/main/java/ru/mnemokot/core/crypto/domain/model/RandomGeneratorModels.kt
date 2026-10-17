@@ -1,4 +1,4 @@
-package com.mnemokot.core.crypto.domain.model
+package ru.mnemokot.core.crypto.domain.model
 
 data class RandomGeneratorConfig(
     val length: Int = 16,
