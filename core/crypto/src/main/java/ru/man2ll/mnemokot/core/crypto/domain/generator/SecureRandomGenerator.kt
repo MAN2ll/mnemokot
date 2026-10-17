@@ -1,4 +1,4 @@
-package ru.mnemokot.core.crypto.domain.generator
+package ru.man2ll.mnemokot.core.crypto.domain.generator
 
 import ru.mnemokot.core.crypto.domain.model.RandomGeneratorConfig
 import ru.mnemokot.core.crypto.domain.model.RandomGeneratorResult
