@@ -1,11 +1,11 @@
-package com.mnemokot.app.presentation.mnemonic
+package ru.mnemokot.app.presentation.mnemonic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
-import com.mnemokot.core.crypto.domain.model.MnemonicConfig
-import com.mnemokot.core.crypto.domain.model.MnemonicGeneratorUiState
-import com.mnemokot.core.crypto.domain.model.MnemonicMethod
+import ru.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
+import ru.mnemokot.core.crypto.domain.model.MnemonicGeneratorUiState
+import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
