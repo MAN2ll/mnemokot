@@ -14,36 +14,32 @@ import javax.inject.Inject
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     private val backupManager: BackupManager,
-    private val sessionManager: SessionManager // Внедряем менеджер сессии
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _backupPayload = MutableStateFlow<String?>(null)
-    val backupPayload: StateFlow<String?> = _backupPayload.asStateFlow()
+    private val _backupPayload = MutableStateFlow<CharArray?>(null)
+    val backupPayload: StateFlow<CharArray?> = _backupPayload.asStateFlow()
 
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
-    fun exportData(password: String) {
+    fun exportData(password: CharArray) {
         val profileId = sessionManager.activeProfileId.value ?: return
-        if (password.isBlank()) return
+        if (password.isEmpty()) return
         
         viewModelScope.launch {
-            val passChars = password.toCharArray()
-            val payload = backupManager.exportBackupV3(profileId, passChars)
-            passChars.fill(' ')
+            val payload = backupManager.exportBackupV3(profileId, password)
             _backupPayload.value = payload
             _statusMessage.value = "Экспорт бэкапа v3 успешно выполнен!"
         }
     }
 
-    fun importData(payload: String, password: String) {
+    fun importData(payload: CharArray, password: CharArray) {
         val profileId = sessionManager.activeProfileId.value ?: return
-        if (payload.isBlank() || password.isBlank()) return
+        if (payload.isEmpty() || password.isEmpty()) return
         
         viewModelScope.launch {
-            val passChars = password.toCharArray()
-            val success = backupManager.importBackupV3(profileId, payload, passChars)
-            passChars.fill(' ')
+            val success = backupManager.importBackupV3(profileId, payload, password)
             if (success) {
                 _statusMessage.value = "Импорт данных успешно завершен! Новые записи добавлены."
                 _backupPayload.value = null
@@ -51,5 +47,15 @@ class BackupViewModel @Inject constructor(
                 _statusMessage.value = "Ошибка импорта. Неверный пароль или поврежденная копия."
             }
         }
+    }
+
+    fun clearBackupData() {
+        _backupPayload.value?.fill('\u0000')
+        _backupPayload.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        clearBackupData()
     }
 }
