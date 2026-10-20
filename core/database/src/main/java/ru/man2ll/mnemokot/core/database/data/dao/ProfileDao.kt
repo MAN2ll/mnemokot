@@ -2,7 +2,7 @@ package ru.man2ll.mnemokot.core.database.data.dao
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
-import ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity
+import ru.man2ll.mnemokot.core.database.data.model.UserProfileEntity
 
 @Dao
 interface ProfileDao {
@@ -21,7 +21,6 @@ interface ProfileDao {
     @Delete
     suspend fun deleteProfile(profile: UserProfileEntity)
 
-    // Новые запросы для Brute-force защиты
     @Query("UPDATE user_profiles SET failedAttempts = failedAttempts + 1 WHERE id = :profileId")
     suspend fun incrementFailedAttempts(profileId: Long)
 
