@@ -33,9 +33,9 @@ class AuditViewModel @Inject constructor(
         }
     }
 
-    fun runDeepAudit(mnemonicPhrase: String) {
+    fun runDeepAudit(mnemonicPhrase: CharArray) {
         val profileId = sessionManager.activeProfileId.value ?: return
-        if (mnemonicPhrase.isBlank()) return
+        if (mnemonicPhrase.isEmpty()) return
         viewModelScope.launch {
             _isLoading.value = true
             _auditResult.value = passwordAuditor.performDeepAudit(profileId, mnemonicPhrase)
