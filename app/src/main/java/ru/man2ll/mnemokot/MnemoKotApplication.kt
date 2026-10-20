@@ -2,16 +2,13 @@ package ru.man2ll.mnemokot
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
+import net.sqlcipher.database.SQLiteDatabase
 
 @HiltAndroidApp
 class MnemoKotApp : Application() {
-    
-    // СТАТИЧЕСКИЙ БЛОК: Загружается самым первым при старте процесса ОС Android
-    init {
-        System.loadLibrary("sqlcipher")
-    }
 
     override fun onCreate() {
         super.onCreate()
+        SQLiteDatabase.loadLibs(this)
     }
 }
