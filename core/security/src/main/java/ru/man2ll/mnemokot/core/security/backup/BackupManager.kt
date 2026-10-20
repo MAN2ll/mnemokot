@@ -15,11 +15,9 @@ class BackupManager @Inject constructor(
     private val cryptoEngine: SecurityCryptoEngine
 ) {
 
-    // 1. Экспорт всех данных в зашифрованную строку Backup v3
-    suspend fun exportBackupV3(profileId: Long, password: CharArray): String {
+    suspend fun exportBackupV3(profileId: Long, password: CharArray): CharArray {
         val accountsList = repository.getAccounts(profileId).first()
         
-        // Формируем внутреннюю структуру JSON
         val rootJson = JSONObject()
         rootJson.put("version", 3)
         rootJson.put("exportTimestamp", System.currentTimeMillis())
@@ -39,24 +37,26 @@ class BackupManager @Inject constructor(
         }
         rootJson.put("accounts", accountsArray)
         
-        // Шифруем полученный JSON-текст через PBKDF2 + AES-GCM-256
-        return cryptoEngine.encryptBackup(rootJson.toString(), password)
+        val jsonString = rootJson.toString()
+        val jsonChars = jsonString.toCharArray()
+        
+        val encryptedBackup = cryptoEngine.encryptBackup(jsonChars, password)
+        
+        jsonChars.fill('\u0000')
+        return encryptedBackup
     }
 
-    // 2. Импорт зашифрованной резервной копии v3 в базу данных
-    suspend fun importBackupV3(profileId: Long, encryptedPayload: String, password: CharArray): Boolean {
+    suspend fun importBackupV3(profileId: Long, encryptedPayload: CharArray, password: CharArray): Boolean {
         return try {
-            // Расшифровываем строку бэкапа
-            val decryptedJsonString = cryptoEngine.decryptBackup(encryptedPayload, password)
-            val rootJson = JSONObject(decryptedJsonString)
+            val decryptedChars = cryptoEngine.decryptBackup(encryptedPayload, password)
+            val decryptedJsonString = String(decryptedChars)
+            decryptedChars.fill('\u0000')
             
-            // Проверяем версию формата резервной копии
+            val rootJson = JSONObject(decryptedJsonString)
             val version = rootJson.optInt("version", -1)
             if (version != 3) return false
             
             val accountsArray = rootJson.getJSONArray("accounts")
-            
-            // Читаем существующие аккаунты профиля, чтобы избежать жестких дубликатов
             val existingAccounts = repository.getAccounts(profileId).first()
 
             for (i in 0 until accountsArray.length()) {
@@ -64,15 +64,13 @@ class BackupManager @Inject constructor(
                 val serviceName = accJson.getString("serviceName")
                 val login = accJson.getString("login")
                 
-                // Проверяем, существует ли уже такая учетная запись в профиле
                 val isDuplicate = existingAccounts.any { 
                     it.serviceName.equals(serviceName, ignoreCase = true) && it.login.equals(login, ignoreCase = true) 
                 }
                 
-                // Если это не дубликат, производим мягкое слияние (Добавление новых записей)
                 if (!isDuplicate) {
                     val account = Account(
-                        id = 0, // Указываем 0, чтобы Room сгенерировал ID автоматически
+                        id = 0,
                         profileId = profileId,
                         serviceName = serviceName,
                         login = login,
@@ -87,8 +85,7 @@ class BackupManager @Inject constructor(
             }
             true
         } catch (e: Exception) {
-            e.printStackTrace()
-            false // Если неверный пароль или поврежден файл — возвращаем ошибку импорта
+            false
         }
     }
 }
