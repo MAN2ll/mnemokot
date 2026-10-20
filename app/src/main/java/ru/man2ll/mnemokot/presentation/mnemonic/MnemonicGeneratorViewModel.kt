@@ -3,91 +3,95 @@ package ru.man2ll.mnemokot.presentation.mnemonic
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.stateIn
-import ru.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
-import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
-import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
+import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
 import javax.inject.Inject
 
+data class MnemonicGeneratorUiState(
+    val passwordLength: Int = 16,
+    val useLeetSpeak: Boolean = true,
+    val translitMode: TranslitMode = TranslitMode.GOST_7_79_2000_B,
+    val calculatedPassword: CharArray? = null,
+    val isHelpVisible: Boolean = false
+)
 
 @HiltViewModel
 class MnemonicGeneratorViewModel @Inject constructor(
     private val passwordGenerator: MnemonicPasswordGeneratorV2
 ) : ViewModel() {
 
-    private val _config = MutableStateFlow(MnemonicConfig())
-    private val _isHelpVisible = MutableStateFlow(false)
+    private val _uiState = MutableStateFlow(MnemonicGeneratorUiState())
+    val uiState: StateFlow<MnemonicGeneratorUiState> = _uiState.asStateFlow()
 
-    val uiState: StateFlow<MnemonicGeneratorUiState> = combine(
-        _config,
-        _isHelpVisible
-    ) { config, isHelpVisible ->
-        val steps = passwordGenerator.generateMnemonicV2(config)
-        MnemonicGeneratorUiState(
-            config = config,
-            steps = steps,
-            isHelpVisible = isHelpVisible
-        )
-    }.flowOn(Dispatchers.Default)
-     .stateIn(
-         scope = viewModelScope,
-         started = SharingStarted.WhileSubscribed(5000),
-         initialValue = MnemonicGeneratorUiState()
-     )
+    private val inputPhraseBuffer = CharArray(256) { '\u0000' }
+    private var phraseLength = 0
 
-    fun onMethodChanged(method: MnemonicMethod) {
-        _config.value = _config.value.copy(method = method)
+    fun onPhraseCharAdded(char: Char) {
+        if (phraseLength < inputPhraseBuffer.size) {
+            inputPhraseBuffer[phraseLength] = char
+            phraseLength++
+        }
     }
 
-    fun onPhraseChanged(phrase: String) {
-        _config.value = _config.value.copy(phrase = phrase)
-    }
-
-    fun onAnchorWordChanged(anchor: String) {
-        _config.value = _config.value.copy(anchorWord = anchor)
-    }
-
-    fun onServiceNameChanged(service: String) {
-        _config.value = _config.value.copy(serviceName = service)
-    }
-
-    fun onDateContextChanged(date: String) {
-        if (date.length <= 4 && date.all { it.isDigit() }) {
-            _config.value = _config.value.copy(dateContext = date)
+    fun onPhraseBackspace() {
+        if (phraseLength > 0) {
+            phraseLength--
+            inputPhraseBuffer[phraseLength] = '\u0000'
         }
     }
 
     fun onTargetLengthChanged(length: Int) {
-        _config.value = _config.value.copy(targetLength = length)
+        _uiState.value = _uiState.value.copy(passwordLength = length)
     }
 
-    fun onKeepRootsChanged(keep: Boolean) {
-        _config.value = _config.value.copy(keepRoots = keep)
+    fun onLeetSpeakToggled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(useLeetSpeak = enabled)
     }
 
-    fun onMutateRepeatsChanged(mutate: Boolean) {
-        _config.value = _config.value.copy(mutateRepeats = mutate)
-    }
-
-    fun onIncludeAnchorChanged(include: Boolean) {
-        _config.value = _config.value.copy(includeAnchor = include)
-    }
-
-    fun onIncludeServiceChanged(include: Boolean) {
-        _config.value = _config.value.copy(includeService = include)
-    }
-
-    fun onIncludeDateChanged(include: Boolean) {
-        _config.value = _config.value.copy(includeDate = include)
+    fun onTranslitModeChanged(mode: TranslitMode) {
+        _uiState.value = _uiState.value.copy(translitMode = mode)
     }
 
     fun toggleHelpVisibility() {
-        _isHelpVisible.value = !_isHelpVisible.value
+        _uiState.value = _uiState.value.copy(isHelpVisible = !_uiState.value.isHelpVisible)
+    }
+
+    fun generate() {
+        viewModelScope.launch {
+            val cleanPhrase = CharArray(phraseLength) { inputPhraseBuffer[it] }
+            val mnemonicPhrase = MnemonicPhrase(cleanPhrase)
+            val staticSalt = "MnemoKot_Generation_Salt".toByteArray(Charsets.UTF_8)
+            
+            val state = _uiState.value
+            val result = passwordGenerator.generatePassword(
+                phrase = mnemonicPhrase,
+                salt = staticSalt,
+                length = state.passwordLength,
+                translitMode = state.translitMode,
+                useLeetSpeak = state.useLeetSpeak
+            )
+
+            _uiState.value = state.copy(calculatedPassword = result.password.clone())
+            
+            mnemonicPhrase.close()
+            result.close()
+            staticSalt.fill(0)
+        }
+    }
+
+    fun clearGeneratedPassword() {
+        _uiState.value.calculatedPassword?.fill('\u0000')
+        _uiState.value = _uiState.value.copy(calculatedPassword = null)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        inputPhraseBuffer.fill('\u0000')
+        clearGeneratedPassword()
     }
 }
