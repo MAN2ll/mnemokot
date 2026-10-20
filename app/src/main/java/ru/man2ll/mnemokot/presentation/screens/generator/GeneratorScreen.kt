@@ -7,13 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorDialog
 import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
 import ru.man2ll.mnemokot.presentation.random.RandomGeneratorDialog
 import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
-
 
 @Composable
 fun GeneratorScreen(
@@ -22,9 +22,12 @@ fun GeneratorScreen(
     val mnemonicViewModel: MnemonicGeneratorViewModel = viewModel()
     val randomViewModel: RandomGeneratorViewModel = viewModel()
 
-    var passwordState by remember { mutableStateOf("") }
+    val displayBuffer = remember { CharArray(128) { '\u0000' } }
+    var displayLength by remember { mutableStateOf(0) }
+
     var showRandomDialog by remember { mutableStateOf(false) }
     var showMnemonicDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
@@ -44,9 +47,13 @@ fun GeneratorScreen(
             )
 
             OutlinedTextField(
-                value = passwordState,
-                onValueChange = { passwordState = it },
+                value = String(displayBuffer, 0, displayLength),
+                onValueChange = { input ->
+                    displayLength = input.length.coerceAtMost(128)
+                    for (i in 0 until displayLength) displayBuffer[i] = input[i]
+                },
                 label = { Text("Пароль *") },
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
                     Row(
@@ -63,12 +70,14 @@ fun GeneratorScreen(
                     }
                 }
             )
+
             if (showRandomDialog) {
                 RandomGeneratorDialog(
                     viewModel = randomViewModel,
                     onDismissRequest = { showRandomDialog = false },
                     onPasswordApplied = { approvedPassword ->
-                        passwordState = approvedPassword
+                        displayLength = approvedPassword.length.coerceAtMost(128)
+                        for (i in 0 until displayLength) displayBuffer[i] = approvedPassword[i]
                     }
                 )
             }
@@ -78,7 +87,8 @@ fun GeneratorScreen(
                     viewModel = mnemonicViewModel,
                     onDismissRequest = { showMnemonicDialog = false },
                     onPasswordApplied = { approvedPassword ->
-                        passwordState = approvedPassword
+                        displayLength = approvedPassword.length.coerceAtMost(128)
+                        for (i in 0 until displayLength) displayBuffer[i] = approvedPassword[i]
                     }
                 )
             }
