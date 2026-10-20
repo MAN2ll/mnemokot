@@ -2,6 +2,7 @@ package ru.man2ll.mnemokot.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import net.sqlcipher.database.SupportFactory
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -29,12 +30,25 @@ abstract class DatabaseModule {
     companion object {
         @Provides
         @Singleton
-        fun provideDatabase(@ApplicationContext context: Context): MnemokotDatabase {
+        fun provideSupportFactory(): SupportFactory {
+            val passphraseSeed = "MnemoKot_Database_Secret_Passphrase_Seed".toByteArray(Charsets.UTF_8)
+            val factory = SupportFactory(passphraseSeed)
+            passphraseSeed.fill(0)
+            return factory
+        }
+
+        @Provides
+        @Singleton
+        fun provideDatabase(
+            @ApplicationContext context: Context,
+            supportFactory: SupportFactory
+        ): MnemokotDatabase {
             return Room.databaseBuilder(
                 context,
                 MnemokotDatabase::class.java,
-                "mnemokot.db"
+                "mnemokot_secure.db"
             )
+            .openHelperFactory(supportFactory)
             .fallbackToDestructiveMigration()
             .build()
         }
