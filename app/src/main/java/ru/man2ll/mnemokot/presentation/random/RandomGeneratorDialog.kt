@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -54,7 +55,7 @@ import androidx.compose.ui.window.DialogProperties
 fun RandomGeneratorDialog(
     viewModel: RandomGeneratorViewModel,
     onDismissRequest: () -> Unit,
-    onPasswordApplied: (String) -> Unit
+    onPasswordApplied: (CharArray) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
@@ -132,7 +133,6 @@ fun RandomGeneratorDialog(
                     valueRange = 8f..64f,
                     steps = 55
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(text = "Используемые символы", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -186,9 +186,10 @@ fun RandomGeneratorDialog(
                 Text(text = "Сгенерированный пароль", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
-                    value = uiState.result.password,
+                    value = uiState.result.password?.let { String(it) } ?: "",
                     onValueChange = {},
                     readOnly = true,
+                    visualTransformation = PasswordVisualTransformation(),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -197,7 +198,13 @@ fun RandomGeneratorDialog(
                             IconButton(onClick = { viewModel.regeneratePassword() }) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Перегенерировать")
                             }
-                            IconButton(onClick = { clipboardManager.setText(AnnotatedString(uiState.result.password)) }) {
+                            IconButton(
+                                onClick = { 
+                                    uiState.result.password?.let { 
+                                        clipboardManager.setText(AnnotatedString(String(it))) 
+                                    } 
+                                }
+                            ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = "Копировать")
                             }
                         }
@@ -255,10 +262,10 @@ fun RandomGeneratorDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onPasswordApplied(uiState.result.password)
+                            uiState.result.password?.let { onPasswordApplied(it.clone()) }
                             onDismissRequest()
                         },
-                        enabled = uiState.result.password.isNotEmpty()
+                        enabled = uiState.result.password != null && uiState.result.password!!.isNotEmpty()
                     ) {
                         Text("Утвердить пароль")
                     }
