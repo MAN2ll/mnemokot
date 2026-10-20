@@ -1,7 +1,7 @@
 package ru.man2ll.mnemokot.core.database.data.dao
 
 import androidx.room.*
-import ru.man2ll.mnemokot.core.database.domain.model.MasterSettingsEntity
+import ru.man2ll.mnemokot.core.database.data.model.MasterSettingsEntity
 
 @Dao
 interface MasterSettingsDao {
