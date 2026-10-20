@@ -2,7 +2,7 @@ package ru.man2ll.mnemokot.core.database.data.dao
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
-import ru.man2ll.mnemokot.core.database.domain.model.AccountEntity
+import ru.man2ll.mnemokot.core.database.data.model.AccountEntity
 
 @Dao
 interface AccountDao {
@@ -27,7 +27,6 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id IN (:accountIds)")
     suspend fun getAccountsByIds(accountIds: List<Long>): List<AccountEntity>
 
-    // ФИКС ОШИБКИ: Добавляем пачковое обновление для транзакций ротации
     @Update
     suspend fun updateAccountsList(accounts: List<AccountEntity>)
 }
