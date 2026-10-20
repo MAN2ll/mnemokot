@@ -1,4 +1,4 @@
-package ru.man2ll.mnemokot.core.database.domain.model
+package ru.man2ll.mnemokot.core.database.data.model
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -25,11 +25,10 @@ data class AccountEntity(
     val isMnemonic: Boolean,
     val passwordLength: Int = 16,
     val salt: String = "",
-    val rotationDate: String = "", // Оставляем для совместимости со старыми вызовами
+    val rotationDate: String = "",
     val encryptedPassword: String? = null,
     val isDualUserMode: Boolean = false,
-    // Новые поля жизненного цикла пароля
     val createdAt: Long = System.currentTimeMillis(),
-    val expiresAt: Long = 0L, // 0L означает "Вечный пароль"
+    val expiresAt: Long = 0L,
     val updatedAt: Long = System.currentTimeMillis()
 )
