@@ -12,6 +12,7 @@ import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,13 +25,12 @@ class VaultViewModel @Inject constructor(
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
 
-    private val _calculatedPassword = MutableStateFlow<String?>(null)
-    val calculatedPassword: StateFlow<String?> = _calculatedPassword.asStateFlow()
+    private val _calculatedPassword = MutableStateFlow<CharArray?>(null)
+    val calculatedPassword: StateFlow<CharArray?> = _calculatedPassword.asStateFlow()
 
     private val _vaultError = MutableStateFlow<String?>(null)
     val vaultError: StateFlow<String?> = _vaultError.asStateFlow()
 
-    // СОСТОЯНИЯ ДЛЯ РЕЖИМА ВЫБОРОЧНОЙ РОТАЦИИ ПАРОЛЕЙ (ЧЕКБОКСЫ)
     private val _isSelectionMode = MutableStateFlow(false)
     val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
@@ -56,16 +56,15 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    // Безопасная проверка PIN-кода профиля перед раскрытием ("глаз")
-    fun verifyProfilePinForAction(pin: String, onSuccessAction: () -> Unit) {
+    fun verifyProfilePinForAction(pin: CharArray, onSuccessAction: () -> Unit) {
         val profileId = sessionManager.activeProfileId.value ?: return
         _vaultError.value = null
         
         viewModelScope.launch {
-            val pinChars = pin.toCharArray()
             val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-            val testHash = cryptoEngine.hashPin(pinChars, staticSalt)
-            pinChars.fill(' ')
+            val testHash = cryptoEngine.hashPin(pin, staticSalt)
+            pin.fill('\u0000')
+            staticSalt.fill(0)
 
             val isValid = repository.verifyPin(profileId, testHash)
             if (isValid) {
@@ -76,7 +75,6 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    // Сохранение нового аккаунта с расчетом жизненного цикла (expiresAt)
     fun onAddAccount(
         service: String, 
         login: String, 
@@ -114,7 +112,6 @@ class VaultViewModel @Inject constructor(
         }
     }
 
-    // Логика переключения чекбоксов в режиме ротации
     fun toggleAccountSelection(accountId: Long) {
         val currentSet = _selectedAccountIds.value
         _selectedAccountIds.value = if (currentSet.contains(accountId)) {
@@ -136,7 +133,6 @@ class VaultViewModel @Inject constructor(
         _vaultError.value = null
     }
 
-    // Запуск перемешивания паролей для отмеченных чекбоксами записей
     fun runSelectedPasswordRotation() {
         val idsToRotate = _selectedAccountIds.value.toList()
         if (idsToRotate.size < 2) {
@@ -148,24 +144,31 @@ class VaultViewModel @Inject constructor(
             val (success, reportMessage) = repository.rotateSelectedPasswords(idsToRotate)
             if (success) {
                 cancelSelectionMode()
-                _vaultError.value = reportMessage // Выводим диалог отчета или тост
+                _vaultError.value = reportMessage
             } else {
                 _vaultError.value = reportMessage
             }
         }
     }
 
-    fun onCalculatePassword(accountId: Long, phrase: String?) {
+    fun onCalculatePassword(accountId: Long, phrase: CharArray?) {
+        if (phrase == null) return
         viewModelScope.launch {
-            val passChars = repository.getPasswordForAccount(accountId, phrase)
-            if (passChars.isNotEmpty()) {
-                _calculatedPassword.value = String(passChars)
-                passChars.fill(' ')
+            val mnemonicPhrase = MnemonicPhrase(phrase)
+            val generationResult = repository.getPasswordForAccount(accountId, mnemonicPhrase)
+            if (generationResult.password.isNotEmpty()) {
+                _calculatedPassword.value = generationResult.password.clone()
             }
+            mnemonicPhrase.close()
+            generationResult.close()
         }
     }
 
-    fun clearCalculatedPassword() { _calculatedPassword.value = null }
+    fun clearCalculatedPassword() {
+        _calculatedPassword.value?.fill('\u0000')
+        _calculatedPassword.value = null 
+    }
+    
     fun clearVaultError() { _vaultError.value = null }
     fun onDeleteAccount(id: Long) { viewModelScope.launch { repository.deleteAccount(id) } }
 }
