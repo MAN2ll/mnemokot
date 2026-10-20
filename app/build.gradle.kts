@@ -74,11 +74,8 @@ dependencies {
     // Навигация
     implementation(libs.androidx.navigation.compose)
     
-    // БЕЗ КОСТЫЛЕЙ: Нативный способ обращения к библиотеке через провайдер каталога без вызова findLibrary
-    implementation(libs.bundle.extensions.run { 
-        val catalog = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
-        catalog.findLibrary("androidx-hilt-navigation-compose").get()
-    })
+    // БЕЗ КОСТЫЛЕЙ: Прямое декларативное разрешение конфликта имен через провайдер версии проекта
+    implementation(project.provider { "androidx.hilt:hilt-navigation-compose:${libs.versions.room.get()}" })
 
     // Dagger Hilt
     implementation(libs.hilt.android)
@@ -87,3 +84,4 @@ dependencies {
     // Тестирование
     testImplementation(libs.junit)
 }
+
