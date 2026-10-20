@@ -2,8 +2,10 @@ package ru.man2ll.mnemokot.core.database.data.repository
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
-import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicOptions
+import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
+import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
+import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
@@ -21,7 +23,7 @@ class MnemokotRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val accountDao: AccountDao,
     private val masterSettingsDao: MasterSettingsDao,
-    private val passwordGenerator: PasswordGenerator
+    private val passwordGeneratorV2: MnemonicPasswordGeneratorV2
 ) : MnemokotRepository {
 
     override fun getProfiles(): Flow<List<UserProfile>> {
@@ -84,20 +86,23 @@ class MnemokotRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: String?): CharArray {
-        val account = accountDao.getAccountById(accountId) ?: return charArrayOf()
+    override suspend fun getPasswordForAccount(accountId: Long, mnemonicPhrase: MnemonicPhrase?): GenerationResult {
+        val account = accountDao.getAccountById(accountId) ?: return GenerationResult(charArrayOf())
         return if (account.isMnemonic) {
-            if (mnemonicPhrase == null) return charArrayOf()
-            val options = MnemonicOptions(
+            if (mnemonicPhrase == null) return GenerationResult(charArrayOf())
+            val saltBytes = account.salt.toByteArray(Charsets.UTF_8)
+            val result = passwordGeneratorV2.generatePassword(
+                phrase = mnemonicPhrase,
+                salt = saltBytes,
                 length = account.passwordLength,
-                salt = account.salt,
-                serviceName = account.serviceName,
-                rotationDate = account.rotationDate,
-                isDualUserMode = account.isDualUserMode
+                translitMode = TranslitMode.GOST_7_79_2000_B,
+                useLeetSpeak = true
             )
-            passwordGenerator.generateFromMnemonic(mnemonicPhrase, options)
+            saltBytes.fill(0)
+            result
         } else {
-            account.encryptedPassword?.toCharArray() ?: charArrayOf()
+            val decryptedChars = account.encryptedPassword?.toCharArray() ?: charArrayOf()
+            GenerationResult(decryptedChars)
         }
     }
     
