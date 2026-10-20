@@ -17,7 +17,7 @@ class SessionManager @Inject constructor() {
 
     fun selectProfile(profileId: Long) {
         _activeProfileId.value = profileId
-        _isAuthorized.value = false // Смена профиля требует повторного ввода PIN
+        _isAuthorized.value = false
     }
 
     fun authorizeSuccess() {
@@ -25,7 +25,7 @@ class SessionManager @Inject constructor() {
     }
 
     fun lockSession() {
-        _isAuthorized.value = false // Мгновенная блокировка (при сворачивании)
+        _isAuthorized.value = false
     }
 
     fun logout() {
