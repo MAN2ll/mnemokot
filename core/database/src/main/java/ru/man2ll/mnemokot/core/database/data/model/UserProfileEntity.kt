@@ -1,4 +1,4 @@
-package ru.man2ll.mnemokot.core.database.domain.model
+package ru.man2ll.mnemokot.core.database.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -9,7 +9,7 @@ data class UserProfileEntity(
     val id: Long = 0,
     val profileName: String,
     val pinHash: String?,
-    val failedAttempts: Int = 0,         // Счетчик неудачных вводов PIN
-    val maxAttemptsBeforeDelete: Int = 5, // N попыток до полного уничтожения
+    val failedAttempts: Int = 0,
+    val maxAttemptsBeforeDelete: Int = 5,
     val createdAt: Long = System.currentTimeMillis()
 )
