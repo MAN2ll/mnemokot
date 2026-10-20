@@ -47,34 +47,30 @@ class MasterAuthViewModel @Inject constructor(
         }
     }
 
-    fun onSetupMasterPassword(password: String, enableBio: Boolean) {
-        if (password.length < 6) {
+    fun onSetupMasterPassword(password: CharArray, enableBio: Boolean) {
+        if (password.size < 6) {
             _errorMessage.value = "Мастер-пароль должен быть не менее 6 символов"
             return
         }
         viewModelScope.launch {
-            // Асинхронно и безопасно сохраняем предпочтение биометрии и пароль подряд
             repository.setBiometricEnabled(enableBio)
-            
-            val passChars = password.toCharArray()
             val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-            val securedHash = cryptoEngine.hashPin(passChars, staticSalt)
-            passChars.fill(' ')
+            val securedHash = cryptoEngine.hashPin(password, staticSalt)
+            password.fill('\u0000')
+            staticSalt.fill(0)
             
             repository.setupMasterPassword(securedHash)
-            
-            // Мгновенно предоставляем доступ без перезапуска
             _uiState.value = MasterUiState.AccessGranted
         }
     }
 
-    fun onVerifyMasterPassword(password: String, onResult: (Boolean) -> Unit) {
+    fun onVerifyMasterPassword(password: CharArray, onResult: (Boolean) -> Unit) {
         _errorMessage.value = null
         viewModelScope.launch {
-            val passChars = password.toCharArray()
             val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-            val testHash = cryptoEngine.hashPin(passChars, staticSalt)
-            passChars.fill(' ')
+            val testHash = cryptoEngine.hashPin(password, staticSalt)
+            password.fill('\u0000')
+            staticSalt.fill(0)
 
             val isValid = repository.verifyMasterPassword(testHash)
             if (isValid) {
