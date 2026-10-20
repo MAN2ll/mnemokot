@@ -1,11 +1,18 @@
-package ru.mnemokot.core.crypto.domain.generator
+package ru.man2ll.mnemokot.core.crypto.domain.generator
 
-import ru.mnemokot.core.crypto.domain.model.MnemonicConfig
-import ru.mnemokot.core.crypto.domain.model.MnemonicGenerationSteps
-import ru.mnemokot.core.crypto.domain.model.MnemonicMethod
-import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
+import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
+import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+
+interface MnemonicPasswordGeneratorV2 {
+    fun generatePassword(
+        phrase: MnemonicPhrase,
+        salt: ByteArray,
+        length: Int,
+        translitMode: TranslitMode,
+        useLeetSpeak: Boolean
+    ): GenerationResult
+}
 
 @Singleton
 class MnemonicPasswordGeneratorV2 @Inject constructor() {
