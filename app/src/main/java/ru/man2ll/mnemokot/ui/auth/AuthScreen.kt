@@ -30,12 +30,11 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pinInput by viewModel.pinInput.collectAsState()
+    val pinLength by viewModel.pinLengthState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
-    // ИСПРАВЛЕНИЕ: Перехватываем системную кнопку "Назад" лаунчера Android
     BackHandler(enabled = uiState !is AuthUiState.ProfileSelection) {
-        viewModel.cancelCreateProfile() // Мягко возвращаем к выбору профилей
+        viewModel.cancelCreateProfile()
     }
 
     Box(
@@ -65,11 +64,11 @@ fun AuthScreen(
             is AuthUiState.EnterPin -> {
                 EnterPinView(
                     profileName = state.profileName,
-                    pinInput = pinInput,
+                    pinLength = pinLength,
                     error = errorMessage,
                     onKeyClick = viewModel::onPinKeyClick,
                     onBackClick = viewModel::cancelCreateProfile,
-                    onConfirmClick = { viewModel.triggerManualVerification() }
+                    onConfirmClick = viewModel::triggerManualVerification
                 )
             }
         }
@@ -140,15 +139,15 @@ fun ProfileSelectionView(
         }
     }
 }
-
 @Composable
 fun CreateProfileView(
-    onCreate: (String, String) -> Unit,
+    onCreate: (String, CharArray) -> Unit,
     onCancel: () -> Unit,
     error: String?
 ) {
     var name by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("") }
+    val pinBuffer = remember { CharArray(6) { '\u0000' } }
+    var pinLength by remember { mutableStateOf(0) }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -168,8 +167,14 @@ fun CreateProfileView(
         Spacer(modifier = Modifier.height(12.dp))
         
         OutlinedTextField(
-            value = pin,
-            onValueChange = { if (it.all { ch -> ch.isDigit() } && it.length <= 6) pin = it },
+            value = String(pinBuffer, 0, pinLength),
+            onValueChange = { input ->
+                val clean = input.filter { it.isDigit() }.take(6)
+                pinLength = clean.length
+                for (i in 0 until 6) {
+                    pinBuffer[i] = if (i < clean.length) clean[i] else '\u0000'
+                }
+            },
             label = { Text("Установите PIN (4-6 цифр)") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
@@ -183,7 +188,12 @@ fun CreateProfileView(
         Spacer(modifier = Modifier.height(24.dp))
         
         Button(
-            onClick = { onCreate(name, pin) },
+            onClick = {
+                val finalPin = CharArray(pinLength) { pinBuffer[it] }
+                onCreate(name, finalPin)
+                pinBuffer.fill('\u0000')
+                pinLength = 0
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -200,7 +210,7 @@ fun CreateProfileView(
 @Composable
 fun EnterPinView(
     profileName: String,
-    pinInput: String,
+    pinLength: Int,
     error: String?,
     onKeyClick: (String) -> Unit,
     onBackClick: () -> Unit,
@@ -226,10 +236,10 @@ fun EnterPinView(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(16.dp)) {
-            if (pinInput.isEmpty()) {
+            if (pinLength == 0) {
                 Text("-", fontSize = 16.sp, color = Color.DarkGray, fontWeight = FontWeight.Bold)
             } else {
-                repeat(pinInput.length) {
+                repeat(pinLength) {
                     Box(
                         modifier = Modifier
                             .size(16.dp)
