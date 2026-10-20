@@ -31,8 +31,11 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Loading)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    private val _pinInput = MutableStateFlow("")
-    val pinInput: StateFlow<String> = _pinInput.asStateFlow()
+    private val pinBuffer = CharArray(6) { '\u0000' }
+    private var pinLength = 0
+
+    private val _pinLengthState = MutableStateFlow(0)
+    val pinLengthState: StateFlow<Int> = _pinLengthState.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -64,35 +67,36 @@ class AuthViewModel @Inject constructor(
     }
 
     fun onSelectProfile(profile: UserProfile) {
-        _pinInput.value = ""
+        clearPinBuffer()
         _errorMessage.value = null
         sessionManager.selectProfile(profile.id)
         loadProfilesState()
     }
 
     fun navigateToCreateProfile() {
-        _pinInput.value = ""
+        clearPinBuffer()
         _errorMessage.value = null
         _uiState.value = AuthUiState.CreateProfile
     }
 
     fun cancelCreateProfile() {
-        _pinInput.value = ""
+        clearPinBuffer()
         _errorMessage.value = null
         sessionManager.logout()
         loadProfilesState()
     }
 
-    fun onCreateProfile(name: String, pin: String) {
-        if (name.isBlank() || pin.length < 4) {
+    fun onCreateProfile(name: String, pin: CharArray) {
+        if (name.isBlank() || pin.size < 4) {
             _errorMessage.value = "Заполните имя и PIN (мин. 4 цифры)"
             return
         }
         viewModelScope.launch {
-            val pinChars = pin.toCharArray()
             val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-            val securedHash = cryptoEngine.hashPin(pinChars, staticSalt)
-            pinChars.fill(' ')
+            val securedHash = cryptoEngine.hashPin(pin, staticSalt)
+            pin.fill('\u0000')
+            staticSalt.fill(0)
+            
             val newId = repository.createProfile(name, securedHash)
             sessionManager.selectProfile(newId)
             loadProfilesState()
@@ -101,14 +105,18 @@ class AuthViewModel @Inject constructor(
 
     fun onPinKeyClick(key: String) {
         _errorMessage.value = null
-        val currentPin = _pinInput.value
         if (key == "C") {
-            if (currentPin.isNotEmpty()) _pinInput.value = currentPin.dropLast(1)
+            if (pinLength > 0) {
+                pinLength--
+                pinBuffer[pinLength] = '\u0000'
+                _pinLengthState.value = pinLength
+            }
         } else {
-            if (currentPin.length < 6) {
-                val newPin = currentPin + key
-                _pinInput.value = newPin
-                if (newPin.length == 6) {
+            if (pinLength < 6 && key.length == 1 && key[0].isDigit()) {
+                pinBuffer[pinLength] = key[0]
+                pinLength++
+                _pinLengthState.value = pinLength
+                if (pinLength == 6) {
                     verifyPin()
                 }
             }
@@ -116,7 +124,7 @@ class AuthViewModel @Inject constructor(
     }
     
     fun triggerManualVerification() {
-        if (_pinInput.value.length >= 4) {
+        if (pinLength >= 4) {
             verifyPin()
         } else {
             _errorMessage.value = "PIN-код должен быть от 4 до 6 цифр"
@@ -126,23 +134,23 @@ class AuthViewModel @Inject constructor(
     private fun verifyPin() {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
-            val enteredPinChars = _pinInput.value.toCharArray()
             val profiles = repository.getProfiles().first()
             val activeProfile = profiles.firstOrNull { it.id == profileId }
 
             if (activeProfile != null) {
                 val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-                val testHash = cryptoEngine.hashPin(enteredPinChars, staticSalt)
-                enteredPinChars.fill(' ')
+                val enteredPin = CharArray(pinLength) { pinBuffer[it] }
+                val testHash = cryptoEngine.hashPin(enteredPin, staticSalt)
+                enteredPin.fill('\u0000')
+                staticSalt.fill(0)
 
                 val isValid = repository.verifyPin(profileId, testHash)
+                clearPinBuffer()
 
                 if (isValid) {
                     repository.resetFailedAttempts(profileId)
-                    _pinInput.value = ""
                     sessionManager.authorizeSuccess()
                 } else {
-                    _pinInput.value = ""
                     val result = repository.incrementFailedAttempts(profileId)
                     if (result == -1) {
                         sessionManager.logout()
@@ -155,5 +163,16 @@ class AuthViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun clearPinBuffer() {
+        pinBuffer.fill('\u0000')
+        pinLength = 0
+        _pinLengthState.value = 0
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        clearPinBuffer()
     }
 }
