@@ -74,8 +74,7 @@ dependencies {
     // Навигация
     implementation(libs.androidx.navigation.compose)
     
-    // БЕЗ КОСТЫЛЕЙ: Прямое декларативное разрешение конфликта имен через провайдер версии проекта
-    implementation(project.provider { "androidx.hilt:hilt-navigation-compose:${libs.versions.room.get()}" })
+    implementation(project.provider { "androidx.hilt:hilt-navigation-compose:1.2.0" })
 
     // Dagger Hilt
     implementation(libs.hilt.android)
@@ -84,4 +83,3 @@ dependencies {
     // Тестирование
     testImplementation(libs.junit)
 }
-
