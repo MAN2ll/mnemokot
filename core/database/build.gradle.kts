@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.devtools.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
@@ -34,13 +35,10 @@ android {
 }
 
 dependencies {
-    // Взаимосвязи Clean Architecture: модуль базы зависит от абстракций криптографии
     implementation(project(":core:crypto"))
 
-    // AndroidX Core
     implementation(libs.androidx.core.ktx)
 
-    // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
@@ -48,10 +46,8 @@ dependencies {
     implementation(libs.net.zetetic.sqlcipher)
     implementation(libs.androidx.sqlite.ktx)
 
-    // Dagger Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Тестирование
     testImplementation(libs.junit)
 }
