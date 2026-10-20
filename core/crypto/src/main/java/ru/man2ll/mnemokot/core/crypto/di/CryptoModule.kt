@@ -4,8 +4,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import ru.man2ll.mnemokot.core.crypto.data.PasswordGeneratorImpl
-import ru.man2ll.mnemokot.core.crypto.domain.PasswordGenerator
+import ru.man2ll.mnemokot.core.crypto.data.MnemonicPasswordGeneratorV2Impl
+import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
 import javax.inject.Singleton
 
 @Module
@@ -14,7 +14,7 @@ abstract class CryptoModule {
 
     @Binds
     @Singleton
-    abstract fun bindPasswordGenerator(
-        passwordGeneratorImpl: PasswordGeneratorImpl
-    ): PasswordGenerator
+    abstract fun bindMnemonicPasswordGeneratorV2(
+        impl: MnemonicPasswordGeneratorV2Impl
+    ): MnemonicPasswordGeneratorV2
 }
