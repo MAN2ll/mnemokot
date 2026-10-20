@@ -1,11 +1,11 @@
-package ru.man2ll.mnemokot.core.database.domain.model
+package ru.man2ll.mnemokot.core.database.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "master_settings")
 data class MasterSettingsEntity(
-    @PrimaryKey val id: Int = 1,
+    @PrimaryKey val id: Long = 1,
     val masterPasswordHash: String?,
     val isBiometricEnabled: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis()
