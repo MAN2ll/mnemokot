@@ -16,17 +16,16 @@ class SecurityCryptoEngine @Inject constructor() {
 
     private val secureRandom = SecureRandom()
 
-    // 1. Хэширование PIN-кода (PBKDF2, 100 000 итераций)
-    fun hashPin(pin: CharArray, customSalt: ByteArray? = null): String {
-        val salt = customSalt ?: ByteArray(16).also { secureRandom.nextBytes(it) }
+    fun hashPin(pin: CharArray, salt: ByteArray): String {
         val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val hash = factory.generateSecret(spec).encoded
+        val hashBytes = factory.generateSecret(spec).encoded
         
-        val result = "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(hash, Base64.NO_WRAP)}"
+        val base64Salt = Base64.encodeToString(salt, Base64.NO_WRAP)
+        val base64Hash = Base64.encodeToString(hashBytes, Base64.NO_WRAP)
+        val result = "$base64Salt:$base64Hash"
         
-        // Очистка памяти
-        hash.fill(0)
+        hashBytes.fill(0)
         return result
     }
 
@@ -45,28 +44,39 @@ class SecurityCryptoEngine @Inject constructor() {
         return testHash == expectedHash
     }
 
-    // 2. Шифрование резервных копий Backup v3 (AES-256-GCM + PBKDF2 200 000 итераций)
-    fun encryptBackup(rawData: String, password: CharArray): String {
+    fun encryptBackup(rawData: CharArray, password: CharArray): CharArray {
         val salt = ByteArray(16).also { secureRandom.nextBytes(it) }
-        val iv = ByteArray(12).also { secureRandom.nextBytes(it) } // 12 байт стандартно для GCM
+        val iv = ByteArray(12).also { secureRandom.nextBytes(it) }
         
-        // Формируем ключ на основе пароля бэкапа
         val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val tmp = factory.generateSecret(spec)
-        val secretKey = SecretKeySpec(tmp.encoded, "AES")
+        val keyKeyBytes = factory.generateSecret(spec).encoded
+        val secretKey = SecretKeySpec(keyKeyBytes, "AES")
         
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
         
-        val encryptedBytes = cipher.doByteArray(rawData.toByteArray(Charsets.UTF_8))
+        val rawBytes = java.nio.charset.StandardCharsets.UTF_8.encode(java.nio.CharBuffer.wrap(rawData))
+        val rawByteArray = ByteArray(rawBytes.remaining())
+        rawBytes.get(rawByteArray)
         
-        // Сборка монолитной строки бэкапа: SALT:IV:ENCRYPTED_DATA
-        return "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(iv, Base64.NO_WRAP)}:${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
+        val encryptedBytes = cipher.doFinal(rawByteArray)
+        
+        val resultString = "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(iv, Base64.NO_WRAP)}:${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
+        val finalResult = resultString.toCharArray()
+        
+        keyKeyBytes.fill(0)
+        salt.fill(0)
+        iv.fill(0)
+        rawByteArray.fill(0)
+        encryptedBytes.fill(0)
+        
+        return finalResult
     }
 
-    fun decryptBackup(encryptedPayload: String, password: CharArray): String {
-        val parts = encryptedPayload.split(":")
+    fun decryptBackup(encryptedPayload: CharArray, password: CharArray): CharArray {
+        val payloadString = String(encryptedPayload)
+        val parts = payloadString.split(":")
         if (parts.size != 3) throw IllegalArgumentException("Неверный формат резервной копии v3")
         
         val salt = Base64.decode(parts[0], Base64.NO_WRAP)
@@ -75,15 +85,24 @@ class SecurityCryptoEngine @Inject constructor() {
         
         val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val tmp = factory.generateSecret(spec)
-        val secretKey = SecretKeySpec(tmp.encoded, "AES")
+        val keyBytes = factory.generateSecret(spec).encoded
+        val secretKey = SecretKeySpec(keyBytes, "AES")
         
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
         
-        val decryptedBytes = cipher.doByteArray(encryptedData)
-        return String(decryptedBytes, Charsets.UTF_8)
+        val decryptedBytes = cipher.doFinal(encryptedData)
+        val charBuffer = java.nio.charset.StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(decryptedBytes))
+        
+        val finalResult = CharArray(charBuffer.remaining())
+        charBuffer.get(finalResult)
+        
+        keyBytes.fill(0)
+        salt.fill(0)
+        iv.fill(0)
+        encryptedData.fill(0)
+        decryptedBytes.fill(0)
+        
+        return finalResult
     }
-
-    private fun Cipher.doByteArray(data: ByteArray): ByteArray = this.doFinal(data)
 }
