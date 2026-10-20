@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.devtools.ksp) // Заменили KAPT на современный KSP
+    alias(libs.plugins.devtools.ksp)
     alias(libs.plugins.hilt.android)
 }
 
@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "ru.man2ll.mnemokot"
-        minSdk = 26 // Oreo
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -52,12 +52,10 @@ android {
 }
 
 dependencies {
-    // Модули ядра Clean Architecture
     implementation(project(":core:crypto"))
     implementation(project(":core:database"))
     implementation(project(":core:security"))
 
-    // AndroidX & Jetpack Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -71,13 +69,11 @@ dependencies {
     implementation(libs.zxing.embedded)
     implementation(libs.androidx.biometric)
     
-    // Navigation
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
-    // Dagger Hilt (Генерация кода теперь идет через быстрый ksp)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Тестирование
     testImplementation(libs.junit)
 }
