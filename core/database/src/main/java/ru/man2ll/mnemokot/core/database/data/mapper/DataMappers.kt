@@ -2,8 +2,8 @@ package ru.man2ll.mnemokot.core.database.data.mapper
 
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
-import ru.man2ll.mnemokot.core.database.domain.model.AccountEntity
-import ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity
+import ru.man2ll.mnemokot.core.database.data.model.AccountEntity
+import ru.man2ll.mnemokot.core.database.data.model.UserProfileEntity
 
 fun UserProfileEntity.toDomain() = UserProfile(
     id = id,
@@ -24,7 +24,6 @@ fun AccountEntity.toDomain() = Account(
     rotationDate = rotationDate,
     explicitPassword = encryptedPassword,
     isDualUserMode = isDualUserMode,
-    // Маппинг новых полей жизненного цикла
     createdAt = createdAt,
     expiresAt = expiresAt
 )
@@ -40,7 +39,6 @@ fun Account.toEntity() = AccountEntity(
     rotationDate = rotationDate,
     encryptedPassword = explicitPassword,
     isDualUserMode = isDualUserMode,
-    // Маппинг новых полей жизненного цикла
     createdAt = createdAt,
     expiresAt = expiresAt,
     updatedAt = System.currentTimeMillis()
