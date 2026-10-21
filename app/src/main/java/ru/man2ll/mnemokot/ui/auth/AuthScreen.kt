@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,9 +33,10 @@ fun AuthScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pinLength by viewModel.pinLengthState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val isAuthorized by viewModel.isAuthorized.collectAsState()
 
-    LaunchedEffect(uiState) {
-        if (viewModel.isAuthorized.value) {
+    LaunchedEffect(isAuthorized) {
+        if (isAuthorized) {
             onAuthSuccess()
         }
     }
