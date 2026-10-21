@@ -76,7 +76,7 @@ fun GeneratorScreen(
                     viewModel = randomViewModel,
                     onDismissRequest = { showRandomDialog = false },
                     onPasswordApplied = { approvedPassword ->
-                        displayLength = approvedPassword.length.coerceAtMost(128)
+                        displayLength = approvedPassword.size.coerceAtMost(128)
                         for (i in 0 until displayLength) displayBuffer[i] = approvedPassword[i]
                     }
                 )
@@ -87,7 +87,7 @@ fun GeneratorScreen(
                     viewModel = mnemonicViewModel,
                     onDismissRequest = { showMnemonicDialog = false },
                     onPasswordApplied = { approvedPassword ->
-                        displayLength = approvedPassword.length.coerceAtMost(128)
+                        displayLength = approvedPassword.size.coerceAtMost(128)
                         for (i in 0 until displayLength) displayBuffer[i] = approvedPassword[i]
                     }
                 )
