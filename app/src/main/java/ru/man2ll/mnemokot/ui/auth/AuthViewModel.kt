@@ -85,8 +85,7 @@ class AuthViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val stringPin = String(pin)
-            val newId = repository.createProfile(name, stringPin)
+            val newId = repository.createProfile(name, pin)
             pin.fill('\u0000')
             sessionManager.selectProfile(newId)
             loadProfilesState()
@@ -102,8 +101,8 @@ class AuthViewModel @Inject constructor(
                 _pinLengthState.value = pinLength
             }
         } else {
-            if (pinLength < 6 && key.length == 1 && key.isDigit()) {
-                pinBuffer[pinLength] = key
+            if (pinLength < 6 && key.length == 1 && key.first().isDigit()) {
+                pinBuffer[pinLength] = key.first()
                 pinLength++
                 _pinLengthState.value = pinLength
                 if (pinLength == 6) {
@@ -124,30 +123,23 @@ class AuthViewModel @Inject constructor(
     private fun verifyPin() {
         val profileId = sessionManager.activeProfileId.value ?: return
         viewModelScope.launch {
-            val profiles = repository.getProfiles().first()
-            val activeProfile = profiles.firstOrNull { it.id == profileId }
+            val enteredPin = CharArray(pinLength) { pinBuffer[it] }
+            val isValid = repository.verifyPin(profileId, enteredPin)
+            enteredPin.fill('\u0000')
+            clearPinBuffer()
 
-            if (activeProfile != null) {
-                val enteredPin = CharArray(pinLength) { pinBuffer[it] }
-                val stringPin = String(enteredPin)
-                enteredPin.fill('\u0000')
-
-                val isValid = repository.verifyPin(profileId, stringPin)
-                clearPinBuffer()
-
-                if (isValid) {
-                    repository.resetFailedAttempts(profileId)
-                    sessionManager.authorizeSuccess()
+            if (isValid) {
+                repository.resetFailedAttempts(profileId)
+                sessionManager.authorizeSuccess()
+            } else {
+                val result = repository.incrementFailedAttempts(profileId)
+                if (result == -1) {
+                    sessionManager.logout()
+                    loadProfilesState()
+                    _errorMessage.value = "Профиль уничтожен из-за брутфорса!"
                 } else {
-                    val result = repository.incrementFailedAttempts(profileId)
-                    if (result == -1) {
-                        sessionManager.logout()
-                        loadProfilesState()
-                        _errorMessage.value = "Профиль уничтожен из-за брутфорса!"
-                    } else {
-                        val remaining = repository.getRemainingAttempts(profileId)
-                        _errorMessage.value = "Неверный PIN. Осталось попыток: $remaining"
-                    }
+                    val remaining = repository.getRemainingAttempts(profileId)
+                    _errorMessage.value = "Неверный PIN. Осталось попыток: $remaining"
                 }
             }
         }
