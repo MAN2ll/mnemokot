@@ -1,136 +1,89 @@
 package ru.man2ll.mnemokot.ui.audit
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.man2ll.mnemokot.core.security.audit.model.WarningType
 
 @Composable
-fun AuditScreen(viewModel: AuditViewModel) {
+fun AuditScreen(
+    viewModel: AuditViewModel
+) {
     val auditResult by viewModel.auditResult.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    var showDeepAuditDialog by remember { mutableStateOf(false) }
-    var mnemonicInput by remember { mutableStateOf("") }
+    val checkBuffer = remember { CharArray(128) { '\u0000' } }
+    var checkLength by remember { mutableStateOf(0) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "Аудит безопасности базы", 
-            fontSize = 22.sp, 
-            fontWeight = FontWeight.Bold, 
-            color = MaterialTheme.colorScheme.primary
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Аудит безопасности сейфов", fontSize = 20.sp, style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { viewModel.runShallowAudit() }, modifier = Modifier.weight(1f)) {
+        OutlinedTextField(
+            value = String(checkBuffer, 0, checkLength),
+            onValueChange = { input ->
+                checkLength = input.length.coerceAtMost(128)
+                for (i in 0 until checkLength) checkBuffer[i] = input[i]
+            },
+            label = { Text("Введите фразу для глубокого аудита") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = { viewModel.runShallowAudit() },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Поверхностный")
             }
+
             Button(
-                onClick = { showDeepAuditDialog = true }, 
-                modifier = Modifier.weight(1f), 
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                onClick = {
+                    val finalPhrase = CharArray(checkLength) { checkBuffer[it] }
+                    viewModel.runDeepAudit(finalPhrase)
+                    finalPhrase.fill('\u0000')
+                },
+                enabled = checkLength > 0,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Глубокий (С фразой)")
+                Text("Глубокий")
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            auditResult?.let { result ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(), 
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Результаты проверки профиля:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Всего аккаунтов проверено: ${result.totalAccountsChecked}")
-                        Text(
-                            text = "Повторно используемых паролей: ${result.duplicatePasswordsFound}", 
-                            color = if (result.duplicatePasswordsFound > 0) Color(0xFFEF5350) else Color.Unspecified
-                        )
-                        Text(
-                            text = "Слабых паролей: ${result.weakPasswordsFound}", 
-                            color = if (result.weakPasswordsFound > 0) Color(0xFFFFEE58) else Color.Unspecified
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Предупреждения системы безопасности:", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(result.warnings) { warning ->
-                        // ИСПРАВЛЕНИЕ: Переменная цвета теперь честно применяется к контейнеру Card
-                        val cardColor = when (warning.type) {
-                            WarningType.REUSED_PASSWORD -> Color(0xFF3A1F22) // Глубокий красный для дубликатов
-                            WarningType.SHORT_PASSWORD -> Color(0xFF38341F)  // Горчично-желтый для коротких
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        }
-                        
-                        Card(
-                            modifier = Modifier.fillMaxWidth(), 
-                            colors = CardDefaults.cardColors(containerColor = cardColor)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "${warning.serviceName} (${warning.login})", 
-                                    fontWeight = FontWeight.Bold, 
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(warning.message, fontSize = 13.sp, color = Color.White)
-                            }
-                        }
-                    }
+            CircularProgressIndicator()
+        } else if (auditResult != null) {
+            val res = auditResult!!
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Проверено аккаунтов: ${res.totalAccountsChecked}")
+                    Text("Найдено дубликатов: ${res.duplicatePasswordsFound}")
+                    Text("Скомпрометировано: ${res.weakPasswordsFound}")
                 }
             }
-        }
-        // Диалог запроса мнемофразы для глубокого аудита
-        if (showDeepAuditDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeepAuditDialog = false; mnemonicInput = "" },
-                title = { Text("Запрос секретной фразы") },
-                text = {
-                    OutlinedTextField(
-                        value = mnemonicInput, 
-                        onValueChange = { mnemonicInput = it }, 
-                        label = { Text("Введите мастер-фразу для анализа") }
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.runDeepAudit(mnemonicInput)
-                            showDeepAuditDialog = false
-                            mnemonicInput = ""
-                        }
-                    ) { Text("Запустить аудит") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeepAuditDialog = false; mnemonicInput = "" }) { 
-                        Text("Отмена") 
-                    }
-                }
-            )
         }
     }
 }
