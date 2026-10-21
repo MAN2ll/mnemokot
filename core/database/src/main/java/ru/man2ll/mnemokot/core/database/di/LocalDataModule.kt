@@ -40,7 +40,7 @@ object LocalDataModule {
             "mnemokot_secure.db"
         )
         .openHelperFactory(supportFactory)
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration() // Авто-сброс схемы при обновлении полей Entity
         .build()
     }
 
