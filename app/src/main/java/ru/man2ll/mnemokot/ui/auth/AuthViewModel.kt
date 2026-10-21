@@ -11,20 +11,11 @@ import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
-import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import javax.inject.Inject
-
-sealed interface AuthUiState {
-    data object Loading : AuthUiState
-    data class ProfileSelection(val profiles: List<UserProfile>) : AuthUiState
-    data object CreateProfile : AuthUiState
-    data class EnterPin(val profileName: String, val remainingAttempts: Int) : AuthUiState
-}
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val cryptoEngine: SecurityCryptoEngine,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -94,12 +85,9 @@ class AuthViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-            val securedHash = cryptoEngine.hashPin(pin, staticSalt)
+            val stringPin = String(pin)
+            val newId = repository.createProfile(name, stringPin)
             pin.fill('\u0000')
-            staticSalt.fill(0)
-            
-            val newId = repository.createProfile(name, securedHash)
             sessionManager.selectProfile(newId)
             loadProfilesState()
         }
@@ -114,8 +102,8 @@ class AuthViewModel @Inject constructor(
                 _pinLengthState.value = pinLength
             }
         } else {
-            if (pinLength < 6 && key.length == 1 && key[0].isDigit()) {
-                pinBuffer[pinLength] = key[0]
+            if (pinLength < 6 && key.length == 1 && key.isDigit()) {
+                pinBuffer[pinLength] = key
                 pinLength++
                 _pinLengthState.value = pinLength
                 if (pinLength == 6) {
@@ -140,13 +128,11 @@ class AuthViewModel @Inject constructor(
             val activeProfile = profiles.firstOrNull { it.id == profileId }
 
             if (activeProfile != null) {
-                val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
                 val enteredPin = CharArray(pinLength) { pinBuffer[it] }
-                val testHash = cryptoEngine.hashPin(enteredPin, staticSalt)
+                val stringPin = String(enteredPin)
                 enteredPin.fill('\u0000')
-                staticSalt.fill(0)
 
-                val isValid = repository.verifyPin(profileId, testHash)
+                val isValid = repository.verifyPin(profileId, stringPin)
                 clearPinBuffer()
 
                 if (isValid) {
