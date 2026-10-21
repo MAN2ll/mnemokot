@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.map
 import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
 import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
-import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
 import ru.man2ll.mnemokot.core.crypto.domain.hasher.PinHasher
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
@@ -127,7 +127,7 @@ class MnemokotRepositoryImpl @Inject constructor(
                 phrase = mnemonicPhrase,
                 salt = saltBytes,
                 length = account.passwordLength,
-                mode = MnemonicMode.AMPG_V2_GOST,
+                translitMode = TranslitMode.GOST_7_79_2000_B,
                 useLeetSpeak = true
             )
             saltBytes.fill(0)
