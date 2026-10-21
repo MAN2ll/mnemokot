@@ -16,6 +16,7 @@ import ru.man2ll.mnemokot.core.database.data.model.MasterSettingsEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
+import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,7 +25,8 @@ class MnemokotRepositoryImpl @Inject constructor(
     private val profileDao: ProfileDao,
     private val accountDao: AccountDao,
     private val masterSettingsDao: MasterSettingsDao,
-    private val passwordGeneratorV2: MnemonicPasswordGeneratorV2
+    private val passwordGeneratorV2: MnemonicPasswordGeneratorV2,
+    private val cryptoEngine: SecurityCryptoEngine
 ) : MnemokotRepository {
 
     override fun getProfiles(): Flow<List<UserProfile>> {
@@ -44,8 +46,14 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
+        // ОШИБКА УСТРАНЕНА: pin здесь — это чистый CharArray в строковом представлении, переданный из VM. 
+        // storedHash из базы содержит структуру "соль:хэш". Вызываем верный криптографический метод.
         val profile = profileDao.getProfileById(profileId) ?: return false
-        return profile.pinHash == pin
+        val storedHash = profile.pinHash ?: return false
+        val pinChars = pin.toCharArray()
+        val isValid = cryptoEngine.verifyPin(pinChars, storedHash)
+        pinChars.fill('\u0000')
+        return isValid
     }
 
     override suspend fun incrementFailedAttempts(profileId: Long): Int {
@@ -162,7 +170,7 @@ class MnemokotRepositoryImpl @Inject constructor(
 
     override suspend fun verifyMasterPassword(passwordHash: String): Boolean {
         val settings = masterSettingsDao.getSettings() ?: return false
-        return settings.masterPasswordHash == passwordHash
+        return cryptoEngine.verifyPin(passwordHash.toCharArray(), settings.masterPasswordHash ?: "")
     }
 
     override suspend fun isBiometricEnabled(): Boolean {
