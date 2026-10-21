@@ -11,10 +11,11 @@ import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
 import ru.man2ll.mnemokot.core.database.data.mapper.toDomain
 import ru.man2ll.mnemokot.core.database.data.mapper.toEntity
+import ru.man2ll.mnemokot.core.database.data.model.UserProfileEntity
+import ru.man2ll.mnemokot.core.database.data.model.MasterSettingsEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
-import ru.man2ll.mnemokot.core.database.domain.model.MasterSettingsEntity
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,7 +32,7 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createProfile(name: String, pin: String?): Long {
-        val entity = ru.man2ll.mnemokot.core.database.domain.model.UserProfileEntity(profileName = name, pinHash = pin)
+        val entity = UserProfileEntity(profileName = name, pinHash = pin)
         return profileDao.insertProfile(entity)
     }
 
