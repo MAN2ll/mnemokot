@@ -9,13 +9,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 import javax.inject.Inject
 
 data class MnemonicGeneratorUiState(
     val passwordLength: Int = 16,
     val useLeetSpeak: Boolean = true,
-    val translitMode: TranslitMode = TranslitMode.GOST_7_79_2000_B,
+    val mnemonicMode: MnemonicMode = MnemonicMode.AMPG_V2_GOST,
     val calculatedPassword: CharArray? = null,
     val isHelpVisible: Boolean = false
 )
@@ -53,8 +53,8 @@ class MnemonicGeneratorViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(useLeetSpeak = enabled)
     }
 
-    fun onTranslitModeChanged(mode: TranslitMode) {
-        _uiState.value = _uiState.value.copy(translitMode = mode)
+    fun onMnemonicModeChanged(mode: MnemonicMode) {
+        _uiState.value = _uiState.value.copy(mnemonicMode = mode)
     }
 
     fun toggleHelpVisibility() {
@@ -72,7 +72,7 @@ class MnemonicGeneratorViewModel @Inject constructor(
                 phrase = mnemonicPhrase,
                 salt = staticSalt,
                 length = state.passwordLength,
-                translitMode = state.translitMode,
+                mode = state.mnemonicMode,
                 useLeetSpeak = state.useLeetSpeak
             )
 
