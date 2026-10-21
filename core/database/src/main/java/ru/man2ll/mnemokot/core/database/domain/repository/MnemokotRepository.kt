@@ -9,8 +9,10 @@ import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
 interface MnemokotRepository {
     fun getProfiles(): Flow<List<UserProfile>>
     suspend fun createProfile(name: String, pin: String?): Long
+    suspend fun createProfile(name: String, pin: CharArray?): Long
     suspend fun deleteProfile(id: Long)
     suspend fun verifyPin(profileId: Long, pin: String): Boolean
+    suspend fun verifyPin(profileId: Long, pin: CharArray): Boolean
     
     suspend fun incrementFailedAttempts(profileId: Long): Int
     suspend fun resetFailedAttempts(profileId: Long)
