@@ -5,43 +5,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +25,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 
 @Composable
 fun MnemonicGeneratorDialog(
@@ -88,7 +60,7 @@ fun MnemonicGeneratorDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "🐈 Комбайн Мнемотехник",
+                        text = "🐈 Арсенал Мнемотехника",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -103,18 +75,19 @@ fun MnemonicGeneratorDialog(
                 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val methods = listOf(
-                    TranslitMode.GOST_7_79_2000_B to "AMPG v2 (ГОСТ)",
-                    TranslitMode.NONE to "Без транслитерации"
+                val modes = listOf(
+                    MnemonicMode.AMPG_V2_GOST to "AMPG v2",
+                    MnemonicMode.QWERTY_SHIFT to "QWERTY сдвиг",
+                    MnemonicMode.PURE_LEET_SPEAK to "Посимвольный Leet"
                 )
-                val selectedIndex = methods.indexOfFirst { it.first == uiState.translitMode }
+                val selectedIndex = modes.indexOfFirst { it.first == uiState.mnemonicMode }
 
                 TabRow(selectedTabIndex = selectedIndex) {
-                    methods.forEachIndexed { index, pair ->
+                    modes.forEachIndexed { index, pair ->
                         Tab(
                             selected = selectedIndex == index,
-                            onClick = { viewModel.onTranslitModeChanged(pair.first) },
-                            text = { Text(pair.second, fontWeight = FontWeight.SemiBold) }
+                            onClick = { viewModel.onMnemonicModeChanged(pair.first) },
+                            text = { Text(pair.second, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
                         )
                     }
                 }
@@ -131,18 +104,19 @@ fun MnemonicGeneratorDialog(
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
                             .padding(12.dp)
                     ) {
-                        Text(
-                            text = "AMPG v2: Переводит кириллицу в транслит ГОСТ, пропорционально усекает длину каждого слова (сохраняя корни) и мутирует повторяющиеся символы в спецсимволы по Leet-карте.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        val helpText = when (uiState.mnemonicMode) {
+                            MnemonicMode.AMPG_V2_GOST -> "AMPG v2: Переводит кириллицу в транслит ГОСТ, усекает корни слов и подмешивает соль аккаунта через SHA-256."
+                            MnemonicMode.QWERTY_SHIFT -> "QWERTY сдвиг: Имитирует ввод русских букв на английской раскладке клавиатуры (например, 'Кот' -> 'Vjn')."
+                            MnemonicMode.PURE_LEET_SPEAK -> "Посимвольный Leet: Преобразует каждый символ фразы по Leet-карте замен с чередованием регистров букв."
+                        }
+                        Text(text = helpText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 val phraseBuffer = remember { CharArray(256) { '\u0000' } }
-                var phraseLength by remember { androidx.compose.runtime.mutableStateOf(0) }
+                var phraseLength by remember { mutableStateOf(0) }
 
                 OutlinedTextField(
                     value = String(phraseBuffer, 0, phraseLength),
@@ -155,28 +129,24 @@ fun MnemonicGeneratorDialog(
                         }
                     },
                     label = { Text("Мнемоническая фраза") },
-                    placeholder = { Text("Введите длинную фразу для преобразования...") },
+                    placeholder = { Text("Введите текст для трансформации...") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Специфичные настройки метода",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Мутация повторов (Leet)", style = MaterialTheme.typography.bodyMedium)
-                        Text("Подстановка спецсимволов вместо удаления дубликатов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (uiState.mnemonicMode == MnemonicMode.AMPG_V2_GOST) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Мутация повторов (Leet)", style = MaterialTheme.typography.bodyMedium)
+                            Text("Подстановка спецсимволов вместо удаления дубликатов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.useLeetSpeak, onCheckedChange = { viewModel.onLeetSpeakToggled(it) })
                     }
-                    Switch(checked = uiState.useLeetSpeak, onCheckedChange = { viewModel.onLeetSpeakToggled(it) })
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(text = "Целевая длина пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -231,12 +201,7 @@ fun MnemonicGeneratorDialog(
                         Text("Отмена")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            viewModel.generate()
-                        },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
+                    Button(onClick = { viewModel.generate() }, modifier = Modifier.padding(end = 8.dp)) {
                         Text("Рассчитать")
                     }
                     Button(
