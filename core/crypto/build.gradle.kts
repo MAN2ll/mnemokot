@@ -36,9 +36,6 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
 
-    // БЕЗ КОСТЫЛЕЙ: Используем api для проброса доменных моделей (MnemonicMode, MnemonicPhrase) на уровень приложения
-    api(libs.androidx.compose.runtime)
-
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
