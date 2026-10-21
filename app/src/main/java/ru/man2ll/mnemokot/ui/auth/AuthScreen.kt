@@ -33,6 +33,12 @@ fun AuthScreen(
     val pinLength by viewModel.pinLengthState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
+    LaunchedEffect(uiState) {
+        if (viewModel.isAuthorized.value) {
+            onAuthSuccess()
+        }
+    }
+
     BackHandler(enabled = uiState !is AuthUiState.ProfileSelection) {
         viewModel.cancelCreateProfile()
     }
@@ -40,6 +46,7 @@ fun AuthScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -126,11 +133,11 @@ fun ProfileSelectionView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         OutlinedButton(
             onClick = onCreateClick,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
@@ -149,7 +156,10 @@ fun CreateProfileView(
     val pinBuffer = remember { CharArray(6) { '\u0000' } }
     var pinLength by remember { mutableStateOf(0) }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(
             text = "Создание профиля MnemoKot",
             fontSize = 22.sp,
@@ -162,7 +172,8 @@ fun CreateProfileView(
             value = name,
             onValueChange = { name = it },
             label = { Text("Имя профиля (Личный, Работа...)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         )
         Spacer(modifier = Modifier.height(12.dp))
         
@@ -177,7 +188,8 @@ fun CreateProfileView(
             },
             label = { Text("Установите PIN (4-6 цифр)") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         )
         
         if (error != null) {
@@ -194,7 +206,7 @@ fun CreateProfileView(
                 pinBuffer.fill('\u0000')
                 pinLength = 0
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text("Создать и войти")
@@ -231,8 +243,8 @@ fun EnterPinView(
             Text(text = "Профиль: $profileName", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "Введите PIN-код", fontSize = 14.sp, color = Color.Gray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Введите PIN-код для разблокировки", fontSize = 14.sp, color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(16.dp)) {
@@ -288,7 +300,7 @@ fun EnterPinView(
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onConfirmClick,
             modifier = Modifier.fillMaxWidth().height(50.dp),
