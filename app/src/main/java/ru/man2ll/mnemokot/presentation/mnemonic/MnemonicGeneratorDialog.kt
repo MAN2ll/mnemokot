@@ -88,10 +88,17 @@ fun MnemonicGeneratorDialog(
                         Tab(
                             selected = selectedIndex == index,
                             onClick = { viewModel.onMnemonicModeChanged(pair.first) },
-                            text = { Text(text = pair.second, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                            text = { 
+                                Text(
+                                    text = pair.second, 
+                                    fontWeight = FontWeight.SemiBold, 
+                                    fontSize = 12.sp
+                                ) 
+                            }
                         )
                     }
                 }
+
                 AnimatedVisibility(
                     visible = uiState.isHelpVisible,
                     enter = expandVertically(animationSpec = tween(300)),
@@ -196,27 +203,27 @@ fun MnemonicGeneratorDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = {
-                        phraseBuffer.fill('\u0000')
-                        onDismissRequest()
-                    }) {
-                        Text("Отмена")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { viewModel.generate() }, modifier = Modifier.padding(end = 8.dp)) {
-                        Text("Рассчитать")
-                    }
-                    Button(
-                        onClick = {
-                            uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
-                            phraseBuffer.fill('\u0000')
-                            onDismissRequest()
-                        },
-                        enabled = uiState.calculatedPassword != null
-                    ) {
-                        Text("Утвердить")
-                    }
-                }
-            }
-        }
-    }
+phraseBuffer.fill('\u0000')
+onDismissRequest()
+}) {
+Text("Отмена")
+}
+Spacer(modifier = Modifier.width(8.dp))
+Button(onClick = { viewModel.generate() }, modifier = Modifier.padding(end = 8.dp)) {
+Text("Рассчитать")
+}
+Button(
+onClick = {
+uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
+phraseBuffer.fill('\u0000')
+onDismissRequest()
+},
+enabled = uiState.calculatedPassword != null
+) {
+Text("Утвердить")
+}
+}
+}
+}
+}
 }
