@@ -114,8 +114,8 @@ class AuthViewModel @Inject constructor(
                 _pinLengthState.value = pinLength
             }
         } else {
-            if (pinLength < 6 && key.length == 1 && key.isDigit()) {
-                pinBuffer[pinLength] = key
+            if (pinLength < 6 && key.length == 1 && key[0].isDigit()) {
+                pinBuffer[pinLength] = key[0]
                 pinLength++
                 _pinLengthState.value = pinLength
                 if (pinLength == 6) {
