@@ -15,7 +15,7 @@ import ru.man2ll.mnemokot.core.database.data.model.MasterSettingsEntity
         AccountEntity::class,
         MasterSettingsEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MnemokotDatabase : RoomDatabase() {
