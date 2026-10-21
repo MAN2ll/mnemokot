@@ -87,20 +87,17 @@ fun MnemonicGeneratorDialog(
                     modes.forEachIndexed { index, pair ->
                         Tab(
                             selected = selectedIndex == index,
-                            onClick = { viewModel.onMnemonicModeChanged(pair.first) }
-                        ) {
-                            Box(modifier = Modifier.padding(vertical = 12.dp)) {
+                            onClick = { viewModel.onMnemonicModeChanged(pair.first) },
+                            text = {
                                 Text(
                                     text = pair.second,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.sp,
-                                    color = if (selectedIndex == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    fontSize = 12.sp
                                 )
                             }
-                        }
+                        )
                     }
                 }
-
                 AnimatedVisibility(
                     visible = uiState.isHelpVisible,
                     enter = expandVertically(animationSpec = tween(300)),
@@ -168,7 +165,6 @@ fun MnemonicGeneratorDialog(
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(text = "Предпросмотр пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -194,36 +190,38 @@ fun MnemonicGeneratorDialog(
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-)
-)
-Spacer(modifier = Modifier.height(24.dp))
-Row(
-modifier = Modifier.fillMaxWidth(),
-horizontalArrangement = Arrangement.End
-) {
-TextButton(onClick = {
-phraseBuffer.fill('\u0000')
-onDismissRequest()
-}) {
-Text("Отмена")
-}
-Spacer(modifier = Modifier.width(8.dp))
-Button(onClick = { viewModel.generate() }, modifier = Modifier.padding(end = 8.dp)) {
-Text("Рассчитать")
-}
-Button(
-onClick = {
-uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
-phraseBuffer.fill('\u0000')
-onDismissRequest()
-},
-enabled = uiState.calculatedPassword != null
-) {
-Text("Утвердить")
-}
-}
-}
-}
-}
+                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        phraseBuffer.fill('\u0000')
+                        onDismissRequest()
+                    }) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { viewModel.generate() }, modifier = Modifier.padding(end = 8.dp)) {
+                        Text("Рассчитать")
+                    }
+                    Button(
+                        onClick = {
+                            uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
+                            phraseBuffer.fill('\u0000')
+                            onDismissRequest()
+                        },
+                        enabled = uiState.calculatedPassword != null
+                    ) {
+                        Text("Утвердить")
+                    }
+                }
+            }
+        }
+    }
 }
