@@ -13,6 +13,13 @@ import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
 import javax.inject.Inject
 
+sealed interface AuthUiState {
+    data object Loading : AuthUiState
+    class ProfileSelection(val profiles: List<UserProfile>) : AuthUiState
+    data object CreateProfile : AuthUiState
+    class EnterPin(val profileName: String, val remainingAttempts: Int) : AuthUiState
+}
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: MnemokotRepository,
