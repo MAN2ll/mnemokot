@@ -31,6 +31,8 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Loading)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    val isAuthorized: StateFlow<Boolean> = sessionManager.isAuthorized
+
     private val pinBuffer = CharArray(6) { '\u0000' }
     private var pinLength = 0
 
@@ -112,8 +114,8 @@ class AuthViewModel @Inject constructor(
                 _pinLengthState.value = pinLength
             }
         } else {
-            if (pinLength < 6 && key.length == 1 && key[0].isDigit()) {
-                pinBuffer[pinLength] = key[0]
+            if (pinLength < 6 && key.length == 1 && key.isDigit()) {
+                pinBuffer[pinLength] = key
                 pinLength++
                 _pinLengthState.value = pinLength
                 if (pinLength == 6) {
