@@ -40,6 +40,7 @@ object LocalDataModule {
             "mnemokot_secure.db"
         )
         .openHelperFactory(supportFactory)
+        .fallbackToDestructiveMigration()
         .build()
     }
 
