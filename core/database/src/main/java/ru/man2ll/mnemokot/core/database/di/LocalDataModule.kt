@@ -2,7 +2,7 @@ package ru.man2ll.mnemokot.core.database.di
 
 import android.content.Context
 import androidx.room.Room
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,6 +12,7 @@ import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
 import ru.man2ll.mnemokot.core.database.data.MnemokotDatabase
+import ru.man2ll.mnemokot.core.database.security.PassphraseProvider
 import javax.inject.Singleton
 
 @Module
@@ -20,10 +21,10 @@ object LocalDataModule {
 
     @Provides
     @Singleton
-    fun provideSupportFactory(): SupportFactory {
-        val passphraseSeed = "MnemoKot_Database_Secret_Passphrase_Seed".toByteArray(Charsets.UTF_8)
-        val factory = SupportFactory(passphraseSeed)
-        passphraseSeed.fill(0)
+    fun provideSupportOpenHelperFactory(passphraseProvider: PassphraseProvider): SupportOpenHelperFactory {
+        val passphrase = passphraseProvider.getPassphrase()
+        val factory = SupportOpenHelperFactory(passphrase)
+        passphrase.fill(0)
         return factory
     }
 
@@ -31,7 +32,7 @@ object LocalDataModule {
     @Singleton
     fun provideDatabase(
         @ApplicationContext context: Context,
-        supportFactory: SupportFactory
+        supportFactory: SupportOpenHelperFactory
     ): MnemokotDatabase {
         return Room.databaseBuilder(
             context,
@@ -39,7 +40,6 @@ object LocalDataModule {
             "mnemokot_secure.db"
         )
         .openHelperFactory(supportFactory)
-        .fallbackToDestructiveMigration()
         .build()
     }
 
