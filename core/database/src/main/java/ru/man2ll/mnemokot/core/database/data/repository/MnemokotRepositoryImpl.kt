@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.map
 import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
 import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
+import ru.man2ll.mnemokot.core.crypto.domain.hasher.PinHasher
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
 import ru.man2ll.mnemokot.core.database.data.dao.MasterSettingsDao
@@ -16,7 +17,7 @@ import ru.man2ll.mnemokot.core.database.data.model.MasterSettingsEntity
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
-import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
+import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,15 +27,35 @@ class MnemokotRepositoryImpl @Inject constructor(
     private val accountDao: AccountDao,
     private val masterSettingsDao: MasterSettingsDao,
     private val passwordGeneratorV2: MnemonicPasswordGeneratorV2,
-    private val cryptoEngine: SecurityCryptoEngine
+    private val pinHasher: PinHasher
 ) : MnemokotRepository {
+
+    private val secureRandom = SecureRandom()
 
     override fun getProfiles(): Flow<List<UserProfile>> {
         return profileDao.getAllProfilesFlow().map { list -> list.map { it.toDomain() } }
     }
 
     override suspend fun createProfile(name: String, pin: String?): Long {
-        val entity = UserProfileEntity(profileName = name, pinHash = pin)
+        return 0L
+    }
+
+    override suspend fun createProfile(name: String, pin: CharArray?): Long {
+        var hash: String? = null
+        var saltHex: String? = null
+        
+        if (pin != null) {
+            val salt = ByteArray(16)
+            secureRandom.nextBytes(salt)
+            hash = pinHasher.hashPin(pin, salt)
+            saltHex = salt.joinToString("") { "%02x".format(it) }
+        }
+        
+        val entity = UserProfileEntity(
+            profileName = name, 
+            pinHash = hash, 
+            pinSalt = saltHex
+        )
         return profileDao.insertProfile(entity)
     }
 
@@ -46,14 +67,16 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
-        // ОШИБКА УСТРАНЕНА: pin здесь — это чистый CharArray в строковом представлении, переданный из VM. 
-        // storedHash из базы содержит структуру "соль:хэш". Вызываем верный криптографический метод.
+        return false
+    }
+
+    override suspend fun verifyPin(profileId: Long, pin: CharArray): Boolean {
         val profile = profileDao.getProfileById(profileId) ?: return false
         val storedHash = profile.pinHash ?: return false
-        val pinChars = pin.toCharArray()
-        val isValid = cryptoEngine.verifyPin(pinChars, storedHash)
-        pinChars.fill('\u0000')
-        return isValid
+        val saltHex = profile.pinSalt ?: return false
+        
+        val saltBytes = saltHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return pinHasher.verifyPin(pin, saltBytes, storedHash)
     }
 
     override suspend fun incrementFailedAttempts(profileId: Long): Int {
@@ -104,7 +127,7 @@ class MnemokotRepositoryImpl @Inject constructor(
                 phrase = mnemonicPhrase,
                 salt = saltBytes,
                 length = account.passwordLength,
-                translitMode = TranslitMode.GOST_7_79_2000_B,
+                mode = MnemonicMode.AMPG_V2_GOST,
                 useLeetSpeak = true
             )
             saltBytes.fill(0)
@@ -170,7 +193,7 @@ class MnemokotRepositoryImpl @Inject constructor(
 
     override suspend fun verifyMasterPassword(passwordHash: String): Boolean {
         val settings = masterSettingsDao.getSettings() ?: return false
-        return cryptoEngine.verifyPin(passwordHash.toCharArray(), settings.masterPasswordHash ?: "")
+        return settings.masterPasswordHash == passwordHash
     }
 
     override suspend fun isBiometricEnabled(): Boolean {
