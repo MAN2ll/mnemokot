@@ -10,13 +10,14 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
+import ru.man2ll.mnemokot.core.crypto.domain.hasher.PinHasher
 
 @Singleton
-class SecurityCryptoEngine @Inject constructor() {
+class SecurityCryptoEngine @Inject constructor() : PinHasher {
 
     private val secureRandom = SecureRandom()
 
-    fun hashPin(pin: CharArray, salt: ByteArray): String {
+    override fun hashPin(pin: CharArray, salt: ByteArray): String {
         val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val hashBytes = factory.generateSecret(spec).encoded
@@ -29,7 +30,21 @@ class SecurityCryptoEngine @Inject constructor() {
         return result
     }
 
-    fun verifyPin(pin: CharArray, storedHash: String): Boolean {
+    override fun verifyPin(pin: CharArray, salt: ByteArray, expectedHash: String): Boolean {
+        val parts = expectedHash.split(":")
+        if (parts.size != 2) return false
+        val expectedHashPart = parts[1]
+        
+        val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val testHashBytes = factory.generateSecret(spec).encoded
+        val testHash = Base64.encodeToString(testHashBytes, Base64.NO_WRAP)
+        
+        testHashBytes.fill(0)
+        return testHash == expectedHashPart
+    }
+
+    fun verifyPinOld(pin: CharArray, storedHash: String): Boolean {
         val parts = storedHash.split(":")
         if (parts.size != 2) return false
         val salt = Base64.decode(parts[0], Base64.NO_WRAP)
