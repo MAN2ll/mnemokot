@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorDialog
 import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
 import ru.man2ll.mnemokot.presentation.random.RandomGeneratorDialog
@@ -17,11 +17,10 @@ import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
 
 @Composable
 fun GeneratorScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    mnemonicViewModel: MnemonicGeneratorViewModel = hiltViewModel(),
+    randomViewModel: RandomGeneratorViewModel = hiltViewModel()
 ) {
-    val mnemonicViewModel: MnemonicGeneratorViewModel = viewModel()
-    val randomViewModel: RandomGeneratorViewModel = viewModel()
-
     val displayBuffer = remember { CharArray(128) { '\u0000' } }
     var displayLength by remember { mutableStateOf(0) }
 
