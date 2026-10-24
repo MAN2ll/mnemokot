@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class MasterSettingsEntity(
     @PrimaryKey val id: Long = 1,
     val masterPasswordHash: String?,
+    val masterPasswordSalt: String?,
     val isBiometricEnabled: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis()
 )
