@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
-import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import javax.inject.Inject
 
 sealed interface MasterUiState {
@@ -22,7 +21,6 @@ sealed interface MasterUiState {
 @HiltViewModel
 class MasterAuthViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val cryptoEngine: SecurityCryptoEngine,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -54,12 +52,8 @@ class MasterAuthViewModel @Inject constructor(
         }
         viewModelScope.launch {
             repository.setBiometricEnabled(enableBio)
-            val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-            val securedHash = cryptoEngine.hashPin(password, staticSalt)
+            repository.setupMasterPassword(password)
             password.fill('\u0000')
-            staticSalt.fill(0)
-            
-            repository.setupMasterPassword(securedHash)
             _uiState.value = MasterUiState.AccessGranted
         }
     }
@@ -67,12 +61,9 @@ class MasterAuthViewModel @Inject constructor(
     fun onVerifyMasterPassword(password: CharArray, onResult: (Boolean) -> Unit) {
         _errorMessage.value = null
         viewModelScope.launch {
-            val staticSalt = "MnemoKot_Master_Salt".toByteArray(Charsets.UTF_8)
-            val testHash = cryptoEngine.hashPin(password, staticSalt)
+            val isValid = repository.verifyMasterPassword(password)
             password.fill('\u0000')
-            staticSalt.fill(0)
 
-            val isValid = repository.verifyMasterPassword(testHash)
             if (isValid) {
                 _uiState.value = MasterUiState.AccessGranted
                 onResult(true)
