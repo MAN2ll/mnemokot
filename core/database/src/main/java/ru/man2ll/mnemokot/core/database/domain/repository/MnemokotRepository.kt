@@ -8,10 +8,8 @@ import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
 
 interface MnemokotRepository {
     fun getProfiles(): Flow<List<UserProfile>>
-    suspend fun createProfile(name: String, pin: String?): Long
     suspend fun createProfile(name: String, pin: CharArray?): Long
     suspend fun deleteProfile(id: Long)
-    suspend fun verifyPin(profileId: Long, pin: String): Boolean
     suspend fun verifyPin(profileId: Long, pin: CharArray): Boolean
     
     suspend fun incrementFailedAttempts(profileId: Long): Int
@@ -27,8 +25,8 @@ interface MnemokotRepository {
     suspend fun rotateSelectedPasswords(accountIds: List<Long>): Pair<Boolean, String>
 
     suspend fun isMasterPasswordSet(): Boolean
-    suspend fun setupMasterPassword(passwordHash: String): Boolean
-    suspend fun verifyMasterPassword(passwordHash: String): Boolean
+    suspend fun setupMasterPassword(password: CharArray): Boolean
+    suspend fun verifyMasterPassword(password: CharArray): Boolean
     suspend fun isBiometricEnabled(): Boolean
     suspend fun setBiometricEnabled(enabled: Boolean)
 }
