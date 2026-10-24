@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.map
 import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
 import ru.man2ll.mnemokot.core.crypto.domain.model.GenerationResult
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 import ru.man2ll.mnemokot.core.crypto.domain.hasher.PinHasher
 import ru.man2ll.mnemokot.core.database.data.dao.AccountDao
 import ru.man2ll.mnemokot.core.database.data.dao.ProfileDao
@@ -36,10 +36,6 @@ class MnemokotRepositoryImpl @Inject constructor(
         return profileDao.getAllProfilesFlow().map { list -> list.map { it.toDomain() } }
     }
 
-    override suspend fun createProfile(name: String, pin: String?): Long {
-        return 0L
-    }
-
     override suspend fun createProfile(name: String, pin: CharArray?): Long {
         var hash: String? = null
         var saltHex: String? = null
@@ -64,10 +60,6 @@ class MnemokotRepositoryImpl @Inject constructor(
         if (entity != null) {
             profileDao.deleteProfile(entity)
         }
-    }
-
-    override suspend fun verifyPin(profileId: Long, pin: String): Boolean {
-        return false
     }
 
     override suspend fun verifyPin(profileId: Long, pin: CharArray): Boolean {
@@ -127,7 +119,7 @@ class MnemokotRepositoryImpl @Inject constructor(
                 phrase = mnemonicPhrase,
                 salt = saltBytes,
                 length = account.passwordLength,
-                translitMode = TranslitMode.GOST_7_79_2000_B,
+                mode = MnemonicMode.AMPG_V2_GOST,
                 useLeetSpeak = true
             )
             saltBytes.fill(0)
@@ -137,8 +129,7 @@ class MnemokotRepositoryImpl @Inject constructor(
             GenerationResult(decryptedChars)
         }
     }
-    
-    override suspend fun rotateSelectedPasswords(accountIds: List<Long>): Pair<Boolean, String> {
+        override suspend fun rotateSelectedPasswords(accountIds: List<Long>): Pair<Boolean, String> {
         val entities = accountDao.getAccountsByIds(accountIds)
         if (entities.size < 2) return Pair(false, "Выберите минимум 2 аккаунта для ротации")
 
@@ -185,15 +176,33 @@ class MnemokotRepositoryImpl @Inject constructor(
         return settings?.masterPasswordHash != null
     }
 
-    override suspend fun setupMasterPassword(passwordHash: String): Boolean {
-        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = passwordHash)
-        masterSettingsDao.saveSettings(current.copy(masterPasswordHash = passwordHash, updatedAt = System.currentTimeMillis()))
+    override suspend fun setupMasterPassword(password: CharArray): Boolean {
+        val salt = ByteArray(16)
+        secureRandom.nextBytes(salt)
+        val saltHex = salt.joinToString("") { "%02x".format(it) }
+        val hash = pinHasher.hashPin(password, salt)
+        
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(
+            masterPasswordHash = hash,
+            masterPasswordSalt = saltHex
+        )
+        masterSettingsDao.saveSettings(
+            current.copy(
+                masterPasswordHash = hash,
+                masterPasswordSalt = saltHex,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
         return true
     }
 
-    override suspend fun verifyMasterPassword(passwordHash: String): Boolean {
+    override suspend fun verifyMasterPassword(password: CharArray): Boolean {
         val settings = masterSettingsDao.getSettings() ?: return false
-        return settings.masterPasswordHash == passwordHash
+        val storedHash = settings.masterPasswordHash ?: return false
+        val saltHex = settings.masterPasswordSalt ?: return false
+        
+        val saltBytes = saltHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return pinHasher.verifyPin(password, saltBytes, storedHash)
     }
 
     override suspend fun isBiometricEnabled(): Boolean {
@@ -202,7 +211,10 @@ class MnemokotRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setBiometricEnabled(enabled: Boolean) {
-        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(masterPasswordHash = null)
+        val current = masterSettingsDao.getSettings() ?: MasterSettingsEntity(
+            masterPasswordHash = null,
+            masterPasswordSalt = null
+        )
         masterSettingsDao.saveSettings(current.copy(isBiometricEnabled = enabled, updatedAt = System.currentTimeMillis()))
     }
 }
