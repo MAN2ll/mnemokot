@@ -2,26 +2,30 @@ package ru.man2ll.mnemokot.ui.vault
 
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 
-/**
- * Контракт данных для создания новой карточки пароля.
- * Все секретные данные передаются как CharArray для крипто-гигиены.
- */
+enum class AccountType {
+    MNEMONIC,
+    HYBRID,
+    VAULT
+}
+
 data class CreateAccountData(
     val serviceName: String,
     val login: String,
-    val password: CharArray, // ← Секрет, должен быть затёрт после использования
-    val isMnemonic: Boolean,
-    val isStoredInVault: Boolean, // ← Гибридный режим: сохранить и фразу, и пароль
-    val mnemonicPhrase: CharArray?, // ← Для гибрида, тоже секрет
+    val password: CharArray,
+    val accountType: AccountType,
+    val mnemonicPhrase: CharArray?,
     val mode: MnemonicMode,
+    val useLeetSpeak: Boolean,
     val passwordLength: Int,
-    val phraseHint: String? // ← Не секретная подсказка
+    val phraseHint: String?,
+    val salt: ByteArray
 ) {
-    /**
-     *  принудительное затирание всех секретных массивов
-     */
+    val isMnemonic: Boolean get() = accountType != AccountType.VAULT
+    val isStoredInVault: Boolean get() = accountType != AccountType.MNEMONIC
+
     fun clearSensitiveData() {
         password.fill('\u0000')
         mnemonicPhrase?.fill('\u0000')
+        salt.fill(0)
     }
 }
