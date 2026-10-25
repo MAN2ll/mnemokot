@@ -8,17 +8,25 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
-import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
+import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
+import java.security.SecureRandom
 import javax.inject.Inject
 
 @HiltViewModel
 class VaultViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val passwordGenerator: MnemonicPasswordGeneratorV2,
+    private val cryptoEngine: SecurityCryptoEngine
 ) : ViewModel() {
+
+    private val secureRandom = SecureRandom()
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
@@ -34,6 +42,9 @@ class VaultViewModel @Inject constructor(
 
     private val _selectedAccountIds = MutableStateFlow<Set<Long>>(emptySet())
     val selectedAccountIds: StateFlow<Set<Long>> = _selectedAccountIds.asStateFlow()
+
+    // Временное хранение мастер-пароля для шифрования (должен быть получен от пользователя)
+    private var masterPasswordForEncryption: CharArray? = null
 
     init {
         observeActiveProfile()
@@ -54,57 +65,120 @@ class VaultViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Устанавливает мастер-пароль для шифрования новых записей.
+     * Должен быть вызван перед saveAccount.
+     */
+    fun setMasterPasswordForEncryption(masterPassword: CharArray) {
+        masterPasswordForEncryption = masterPassword
+    }
+
+    /**
+     * Сохраняет новую карточку пароля.
+     * Поддерживает три режима:
+     * 1. Чистая мнемоника (isMnemonic=true, isStoredInVault=false)
+     * 2. Гибрид (isMnemonic=true, isStoredInVault=true)
+     * 3. Vault (isMnemonic=false)
+     */
+    fun saveAccount(data: CreateAccountData) {
+        val profileId = sessionManager.activeProfileId.value ?: return
+        val masterPassword = masterPasswordForEncryption
+
+        if (data.isStoredInVault && masterPassword == null) {
+            _vaultError.value = "Требуется мастер-пароль для шифрования"
+            return
+        }
+
+        viewModelScope.launch {
+            val currentTime = System.currentTimeMillis()
+            
+            // Генерируем уникальную соль для аккаунта
+            val saltBytes = ByteArray(16)
+            secureRandom.nextBytes(saltBytes)
+            val saltString = saltBytes.joinToString("") { "%02x".format(it) }
+
+            var encryptedPassword: String? = null
+            var encryptedPhrase: String? = null
+
+            when {
+                // Режим 1: Чистая мнемоника — пароль не сохраняется
+                data.isMnemonic && !data.isStoredInVault -> {
+                    // Ничего не шифруем, пароль будет генерироваться на лету
+                }
+
+                // Режим 2: Гибрид — сохраняем и фразу, и сгенерированный пароль
+                data.isMnemonic && data.isStoredInVault -> {
+                    val phrase = data.mnemonicPhrase ?: run {
+                        _vaultError.value = "Фраза обязательна для гибридного режима"
+                        return@launch
+                    }
+
+                    // Генерируем пароль через движок
+                    val mnemonicPhrase = MnemonicPhrase(phrase)
+                    val generationResult = passwordGenerator.generatePassword(
+                        phrase = mnemonicPhrase,
+                        salt = saltBytes,
+                        length = data.passwordLength,
+                        mode = data.mode,
+                        useLeetSpeak = true
+                    )
+
+                    // Шифруем и фразу, и пароль
+                    encryptedPassword = cryptoEngine.encryptPassword(generationResult.password, masterPassword!!)
+                    encryptedPhrase = cryptoEngine.encryptPassword(phrase, masterPassword)
+
+                    // Крипто-гигиена
+                    mnemonicPhrase.close()
+                    generationResult.close()
+                }
+
+                // Режим 3: Vault — шифруем введённый пароль
+                !data.isMnemonic -> {
+                    encryptedPassword = cryptoEngine.encryptPassword(data.password, masterPassword!!)
+                }
+            }
+
+            val account = Account(
+                id = 0,
+                profileId = profileId,
+                serviceName = data.serviceName,
+                login = data.login,
+                isMnemonic = data.isMnemonic,
+                passwordLength = data.passwordLength,
+                salt = saltString,
+                rotationDate = "",
+                explicitPassword = encryptedPassword,
+                encryptedMnemonicPhrase = encryptedPhrase,
+                isDualUserMode = false,
+                createdAt = currentTime,
+                expiresAt = 0L,
+                updatedAt = currentTime
+            )
+
+            repository.saveAccount(account)
+
+            // Крипто-гигиена: затираем все секреты
+            data.clearSensitiveData()
+            masterPasswordForEncryption?.fill('\u0000')
+            masterPasswordForEncryption = null
+            saltBytes.fill(0)
+
+            _vaultError.value = null
+        }
+    }
+
     fun verifyProfilePinForAction(pin: CharArray, onSuccessAction: () -> Unit) {
         val profileId = sessionManager.activeProfileId.value ?: return
         _vaultError.value = null
-        
         viewModelScope.launch {
-            // Делегируем проверку репозиторию - он сам достанет соль из БД
             val isValid = repository.verifyPin(profileId, pin)
-            pin.fill('\u0000') // Крипто-гигиена: затираем PIN из памяти
+            pin.fill('\u0000')
 
             if (isValid) {
                 onSuccessAction()
             } else {
                 _vaultError.value = "Неверный PIN-код профиля"
             }
-        }
-    }
-
-    fun onAddAccount(
-        service: String, 
-        login: String, 
-        isMnemonic: Boolean, 
-        len: Int, 
-        salt: String, 
-        daysToLive: Int, 
-        explicit: String?, 
-        isDual: Boolean
-    ) {
-        val profileId = sessionManager.activeProfileId.value ?: return
-        viewModelScope.launch {
-            val currentTime = System.currentTimeMillis()
-            val expiresAtTime = if (daysToLive > 0) {
-                currentTime + (daysToLive.toLong() * 24 * 60 * 60 * 1000)
-            } else {
-                0L
-            }
-
-            val account = Account(
-                id = 0, 
-                profileId = profileId, 
-                serviceName = service, 
-                login = login,
-                isMnemonic = isMnemonic, 
-                passwordLength = len, 
-                salt = salt, 
-                rotationDate = daysToLive.toString(), 
-                explicitPassword = explicit, 
-                isDualUserMode = isDual,
-                createdAt = currentTime,
-                expiresAt = expiresAtTime
-            )
-            repository.saveAccount(account)
         }
     }
 
@@ -135,7 +209,6 @@ class VaultViewModel @Inject constructor(
             _vaultError.value = "Отметьте минимум 2 аккаунта для перемешивания"
             return
         }
-        
         viewModelScope.launch {
             val (success, reportMessage) = repository.rotateSelectedPasswords(idsToRotate)
             if (success) {
@@ -162,9 +235,23 @@ class VaultViewModel @Inject constructor(
 
     fun clearCalculatedPassword() {
         _calculatedPassword.value?.fill('\u0000')
-        _calculatedPassword.value = null 
+        _calculatedPassword.value = null
     }
-    
-    fun clearVaultError() { _vaultError.value = null }
-    fun onDeleteAccount(id: Long) { viewModelScope.launch { repository.deleteAccount(id) } }
+
+    fun clearVaultError() {
+        _vaultError.value = null
+    }
+
+    fun onDeleteAccount(id: Long) {
+        viewModelScope.launch {
+            repository.deleteAccount(id)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // затираем мастер-пароль при уничтожении ViewModel
+        masterPasswordForEncryption?.fill('\u0000')
+        masterPasswordForEncryption = null
+    }
 }
