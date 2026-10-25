@@ -27,7 +27,7 @@ data class AccountEntity(
     val salt: String = "",
     val rotationDate: String = "",
     val encryptedPassword: String? = null,
-    val encryptedMnemonicPhrase: String? = null, // ← НОВОЕ ПОЛЕ для гибридного режима
+    val encryptedMnemonicPhrase: String? = null,
     val isDualUserMode: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val expiresAt: Long = 0L,
