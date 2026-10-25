@@ -10,7 +10,7 @@ data class Account(
     val salt: String,
     val rotationDate: String,
     val explicitPassword: String?,
-    val encryptedMnemonicPhrase: String? = null, // ← НОВОЕ ПОЛЕ
+    val encryptedMnemonicPhrase: String? = null,
     val isDualUserMode: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val expiresAt: Long = 0L,
