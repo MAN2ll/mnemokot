@@ -10,8 +10,9 @@ data class Account(
     val salt: String,
     val rotationDate: String,
     val explicitPassword: String?,
+    val encryptedMnemonicPhrase: String? = null, // ← НОВОЕ ПОЛЕ
     val isDualUserMode: Boolean = false,
-    // Добавляем новые метрики на уровень Domain
     val createdAt: Long = System.currentTimeMillis(),
-    val expiresAt: Long = 0L
+    val expiresAt: Long = 0L,
+    val updatedAt: Long = System.currentTimeMillis()
 )
