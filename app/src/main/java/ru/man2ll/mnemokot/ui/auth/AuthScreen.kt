@@ -28,7 +28,8 @@ import ru.man2ll.mnemokot.core.database.domain.model.UserProfile
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pinLength by viewModel.pinLengthState.collectAsState()
@@ -39,6 +40,10 @@ fun AuthScreen(
         if (isAuthorized) {
             onAuthSuccess()
         }
+    }
+
+    BackHandler(enabled = uiState is AuthUiState.ProfileSelection) {
+        onNavigateBack()
     }
 
     BackHandler(enabled = uiState !is AuthUiState.ProfileSelection) {
@@ -148,6 +153,7 @@ fun ProfileSelectionView(
         }
     }
 }
+
 @Composable
 fun CreateProfileView(
     onCreate: (String, CharArray) -> Unit,
