@@ -40,6 +40,10 @@ fun AppNavigation(navController: NavHostController) {
                     navController.navigate(Routes.AUTH) {
                         popUpTo(Routes.MASTER_AUTH) { inclusive = true }
                     }
+                },
+                onExitApp = {
+                    // Закрытие приложения через finish()
+                    android.os.Process.killProcess(android.os.Process.myPid())
                 }
             )
         }
@@ -52,6 +56,9 @@ fun AppNavigation(navController: NavHostController) {
                     navController.navigate(Routes.VAULT) {
                         popUpTo(Routes.AUTH) { inclusive = true }
                     }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -68,6 +75,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToBackup = {
                     navController.navigate(Routes.BACKUP)
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
