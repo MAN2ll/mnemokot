@@ -53,39 +53,15 @@ fun CreateAccountDialog(
 
     val vaultError by viewModel.vaultError.collectAsState()
 
-    fun generatePreview() {
-        if (phraseLength == 0) return
-        currentSalt?.fill(0)
-        val salt = viewModel.generateSalt()
-        currentSalt = salt
-        val phrase = CharArray(phraseLength) { phraseBuffer[it] }
-        val preview = viewModel.generatePasswordPreview(
-            phrase = phrase,
-            salt = salt,
-            mode = selectedMode,
-            useLeetSpeak = useLeetSpeak,
-            length = passwordLength
-        )
+    // ВСЕ ФУНКЦИИ-ПОМОЩНИКИ ОБЪЯВЛЕНЫ ЗДЕСЬ (ДО МЕСТ ИХ ИСПОЛЬЗОВАНИЯ)
+    
+    fun cleanupAndDismiss() {
+        phraseBuffer.fill('\u0000')
+        vaultPasswordBuffer.fill('\u0000')
+        masterPasswordBuffer.fill('\u0000')
         generatedPreview?.fill('\u0000')
-        generatedPreview = preview
-        phrase.fill('\u0000')
-    }
-
-    fun generateRandomForVault() {
-        val randomPassword = viewModel.generateRandomPassword(passwordLength)
-        for (i in 0 until passwordLength) {
-            vaultPasswordBuffer[i] = randomPassword[i]
-        }
-        vaultPasswordLength = passwordLength
-        randomPassword.fill('\u0000')
-    }
-
-    fun attemptSave() {
-        if (accountType == AccountType.VAULT || accountType == AccountType.HYBRID) {
-            showMasterPasswordStep = true
-        } else {
-            performSave(null)
-        }
+        currentSalt?.fill(0)
+        onDismiss()
     }
 
     fun performSave(masterPassword: CharArray?) {
@@ -129,14 +105,42 @@ fun CreateAccountDialog(
         cleanupAndDismiss()
     }
 
-    fun cleanupAndDismiss() {
-        phraseBuffer.fill('\u0000')
-        vaultPasswordBuffer.fill('\u0000')
-        masterPasswordBuffer.fill('\u0000')
-        generatedPreview?.fill('\u0000')
-        currentSalt?.fill(0)
-        onDismiss()
+    fun attemptSave() {
+        if (accountType == AccountType.VAULT || accountType == AccountType.HYBRID) {
+            showMasterPasswordStep = true
+        } else {
+            performSave(null)
+        }
     }
+
+    fun generatePreview() {
+        if (phraseLength == 0) return
+        currentSalt?.fill(0)
+        val salt = viewModel.generateSalt()
+        currentSalt = salt
+        val phrase = CharArray(phraseLength) { phraseBuffer[it] }
+        val preview = viewModel.generatePasswordPreview(
+            phrase = phrase,
+            salt = salt,
+            mode = selectedMode,
+            useLeetSpeak = useLeetSpeak,
+            length = passwordLength
+        )
+        generatedPreview?.fill('\u0000')
+        generatedPreview = preview
+        phrase.fill('\u0000')
+    }
+
+    fun generateRandomForVault() {
+        val randomPassword = viewModel.generateRandomPassword(passwordLength)
+        for (i in 0 until passwordLength) {
+            vaultPasswordBuffer[i] = randomPassword[i]
+        }
+        vaultPasswordLength = passwordLength
+        randomPassword.fill('\u0000')
+    }
+
+    // UI НАЧИНАЕТСЯ ЗДЕСЬ
 
     Dialog(
         onDismissRequest = { cleanupAndDismiss() },
