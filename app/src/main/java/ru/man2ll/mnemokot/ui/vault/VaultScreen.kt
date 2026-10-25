@@ -42,7 +42,6 @@ fun VaultScreen(
     var pinConfirmLength by remember { mutableStateOf(0) }
     var showPinDialogForAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    // Обработка системной кнопки "Назад"
     BackHandler {
         onNavigateBack()
     }
@@ -134,7 +133,6 @@ fun VaultScreen(
                 }
             }
 
-            // Диалог подтверждения PIN для расчёта пароля
             if (showPinDialogForAction != null) {
                 AlertDialog(
                     onDismissRequest = { 
@@ -198,7 +196,6 @@ fun VaultScreen(
                 )
             }
 
-            // Диалог отображения рассчитанного пароля
             if (calculatedPassword != null) {
                 AlertDialog(
                     onDismissRequest = { viewModel.clearCalculatedPassword() },
@@ -231,14 +228,10 @@ fun VaultScreen(
         }
     }
 
-    // Диалог создания новой карточки пароля
     if (showCreateDialog) {
         CreateAccountDialog(
-            onDismiss = { showCreateDialog = false },
-            onSave = { data ->
-                viewModel.saveAccount(data)
-                showCreateDialog = false
-            }
+            viewModel = viewModel,
+            onDismiss = { showCreateDialog = false }
         )
     }
 }
