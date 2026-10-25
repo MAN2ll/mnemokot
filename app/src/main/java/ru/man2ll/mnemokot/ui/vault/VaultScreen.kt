@@ -1,5 +1,6 @@
 package ru.man2ll.mnemokot.ui.vault
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +26,8 @@ fun VaultScreen(
     viewModel: VaultViewModel,
     onNavigateToGenerator: () -> Unit,
     onNavigateToAudit: () -> Unit,
-    onNavigateToBackup: () -> Unit
+    onNavigateToBackup: () -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     val accounts by viewModel.accounts.collectAsState()
     val calculatedPassword by viewModel.calculatedPassword.collectAsState()
@@ -39,6 +41,10 @@ fun VaultScreen(
     val pinConfirmBuffer = remember { CharArray(6) { '\u0000' } }
     var pinConfirmLength by remember { mutableStateOf(0) }
     var showPinDialogForAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    BackHandler {
+        onNavigateBack()
+    }
 
     Scaffold(
         topBar = {
