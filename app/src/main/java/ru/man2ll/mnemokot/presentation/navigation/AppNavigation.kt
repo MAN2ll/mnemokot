@@ -9,12 +9,19 @@ import ru.man2ll.mnemokot.ui.auth.AuthScreen
 import ru.man2ll.mnemokot.ui.auth.AuthViewModel
 import ru.man2ll.mnemokot.ui.auth.MasterAuthScreen
 import ru.man2ll.mnemokot.ui.auth.MasterAuthViewModel
+import ru.man2ll.mnemokot.ui.vault.VaultScreen
+import ru.man2ll.mnemokot.ui.vault.VaultViewModel
 import ru.man2ll.mnemokot.presentation.screens.generator.GeneratorScreen
+import ru.man2ll.mnemokot.ui.audit.AuditScreen
+import ru.man2ll.mnemokot.ui.backup.BackupScreen
 
 object Routes {
     const val MASTER_AUTH = "master_auth_route"
     const val AUTH = "auth_route"
+    const val VAULT = "vault_route"
     const val GENERATOR = "generator_route"
+    const val AUDIT = "audit_route"
+    const val BACKUP = "backup_route"
 }
 
 @Composable
@@ -40,15 +47,51 @@ fun AppNavigation(navController: NavHostController) {
             AuthScreen(
                 viewModel = authViewModel,
                 onAuthSuccess = {
-                    navController.navigate(Routes.GENERATOR) {
+                    navController.navigate(Routes.VAULT) {
                         popUpTo(Routes.AUTH) { inclusive = true }
                     }
                 }
             )
         }
 
+        composable(Routes.VAULT) {
+            val vaultViewModel: VaultViewModel = hiltViewModel()
+            VaultScreen(
+                viewModel = vaultViewModel,
+                onNavigateToGenerator = {
+                    navController.navigate(Routes.GENERATOR)
+                },
+                onNavigateToAudit = {
+                    navController.navigate(Routes.AUDIT)
+                },
+                onNavigateToBackup = {
+                    navController.navigate(Routes.BACKUP)
+                }
+            )
+        }
+
         composable(Routes.GENERATOR) {
-            GeneratorScreen()
+            GeneratorScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.AUDIT) {
+            AuditScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.BACKUP) {
+            BackupScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
