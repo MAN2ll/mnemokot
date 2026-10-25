@@ -21,11 +21,9 @@ class SecurityCryptoEngine @Inject constructor() : PinHasher {
         val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val hashBytes = factory.generateSecret(spec).encoded
-        
         val base64Salt = Base64.encodeToString(salt, Base64.NO_WRAP)
         val base64Hash = Base64.encodeToString(hashBytes, Base64.NO_WRAP)
         val result = "$base64Salt:$base64Hash"
-        
         hashBytes.fill(0)
         return result
     }
@@ -34,12 +32,10 @@ class SecurityCryptoEngine @Inject constructor() : PinHasher {
         val parts = expectedHash.split(":")
         if (parts.size != 2) return false
         val expectedHashPart = parts[1]
-        
         val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val testHashBytes = factory.generateSecret(spec).encoded
         val testHash = Base64.encodeToString(testHashBytes, Base64.NO_WRAP)
-        
         testHashBytes.fill(0)
         return testHash == expectedHashPart
     }
@@ -49,56 +45,57 @@ class SecurityCryptoEngine @Inject constructor() : PinHasher {
         if (parts.size != 2) return false
         val salt = Base64.decode(parts[0], Base64.NO_WRAP)
         val expectedHash = parts[1]
-        
         val spec: KeySpec = PBEKeySpec(pin, salt, 100000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val testHashBytes = factory.generateSecret(spec).encoded
         val testHash = Base64.encodeToString(testHashBytes, Base64.NO_WRAP)
-        
         testHashBytes.fill(0)
         return testHash == expectedHash
     }
 
-    fun encryptBackup(rawData: CharArray, password: CharArray): CharArray {
+    /**
+     * Шифрует пароль для хранения в Vault (использует мастер-пароль как ключ)
+     * Формат: base64(salt):base64(iv):base64(encryptedData)
+     */
+    fun encryptPassword(plainPassword: CharArray, masterPassword: CharArray): String {
         val salt = ByteArray(16).also { secureRandom.nextBytes(it) }
         val iv = ByteArray(12).also { secureRandom.nextBytes(it) }
         
-        val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
+        val spec: KeySpec = PBEKeySpec(masterPassword, salt, 200000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val keyKeyBytes = factory.generateSecret(spec).encoded
-        val secretKey = SecretKeySpec(keyKeyBytes, "AES")
+        val keyBytes = factory.generateSecret(spec).encoded
+        val secretKey = SecretKeySpec(keyBytes, "AES")
         
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
         
-        val rawBytes = java.nio.charset.StandardCharsets.UTF_8.encode(java.nio.CharBuffer.wrap(rawData))
-        val rawByteArray = ByteArray(rawBytes.remaining())
-        rawBytes.get(rawByteArray)
+        val plainBytes = String(plainPassword).toByteArray(Charsets.UTF_8)
+        val encryptedBytes = cipher.doFinal(plainBytes)
         
-        val encryptedBytes = cipher.doFinal(rawByteArray)
+        val result = "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(iv, Base64.NO_WRAP)}:${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
         
-        val resultString = "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(iv, Base64.NO_WRAP)}:${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
-        val finalResult = resultString.toCharArray()
-        
-        keyKeyBytes.fill(0)
+        // Крипто-гигиена: затираем временные данные
+        keyBytes.fill(0)
         salt.fill(0)
         iv.fill(0)
-        rawByteArray.fill(0)
+        plainBytes.fill(0)
         encryptedBytes.fill(0)
         
-        return finalResult
+        return result
     }
 
-    fun decryptBackup(encryptedPayload: CharArray, password: CharArray): CharArray {
-        val payloadString = String(encryptedPayload)
-        val parts = payloadString.split(":")
-        if (parts.size != 3) throw IllegalArgumentException("Неверный формат резервной копии v3")
+    /**
+     * Расшифровывает пароль из Vault (использует мастер-пароль как ключ)
+     */
+    fun decryptPassword(encryptedPayload: String, masterPassword: CharArray): CharArray {
+        val parts = encryptedPayload.split(":")
+        if (parts.size != 3) throw IllegalArgumentException("Неверный формат зашифрованного пароля")
         
         val salt = Base64.decode(parts[0], Base64.NO_WRAP)
         val iv = Base64.decode(parts[1], Base64.NO_WRAP)
         val encryptedData = Base64.decode(parts[2], Base64.NO_WRAP)
         
-        val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
+        val spec: KeySpec = PBEKeySpec(masterPassword, salt, 200000, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val keyBytes = factory.generateSecret(spec).encoded
         val secretKey = SecretKeySpec(keyBytes, "AES")
@@ -107,17 +104,63 @@ class SecurityCryptoEngine @Inject constructor() : PinHasher {
         cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
         
         val decryptedBytes = cipher.doFinal(encryptedData)
-        val charBuffer = java.nio.charset.StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(decryptedBytes))
+        val result = String(decryptedBytes, Charsets.UTF_8).toCharArray()
         
-        val finalResult = CharArray(charBuffer.remaining())
-        charBuffer.get(finalResult)
-        
+        // Крипто-гигиена: затираем временные данные
         keyBytes.fill(0)
         salt.fill(0)
         iv.fill(0)
         encryptedData.fill(0)
         decryptedBytes.fill(0)
         
+        return result
+    }
+
+    fun encryptBackup(rawData: CharArray, password: CharArray): CharArray {
+        val salt = ByteArray(16).also { secureRandom.nextBytes(it) }
+        val iv = ByteArray(12).also { secureRandom.nextBytes(it) }
+        val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val keyKeyBytes = factory.generateSecret(spec).encoded
+        val secretKey = SecretKeySpec(keyKeyBytes, "AES")
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+        val rawBytes = java.nio.charset.StandardCharsets.UTF_8.encode(java.nio.CharBuffer.wrap(rawData))
+        val rawByteArray = ByteArray(rawBytes.remaining())
+        rawBytes.get(rawByteArray)
+        val encryptedBytes = cipher.doFinal(rawByteArray)
+        val resultString = "${Base64.encodeToString(salt, Base64.NO_WRAP)}:${Base64.encodeToString(iv, Base64.NO_WRAP)}:${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
+        val finalResult = resultString.toCharArray()
+        keyKeyBytes.fill(0)
+        salt.fill(0)
+        iv.fill(0)
+        rawByteArray.fill(0)
+        encryptedBytes.fill(0)
+        return finalResult
+    }
+
+    fun decryptBackup(encryptedPayload: CharArray, password: CharArray): CharArray {
+        val payloadString = String(encryptedPayload)
+        val parts = payloadString.split(":")
+        if (parts.size != 3) throw IllegalArgumentException("Неверный формат резервной копии v3")
+        val salt = Base64.decode(parts[0], Base64.NO_WRAP)
+        val iv = Base64.decode(parts[1], Base64.NO_WRAP)
+        val encryptedData = Base64.decode(parts[2], Base64.NO_WRAP)
+        val spec: KeySpec = PBEKeySpec(password, salt, 200000, 256)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val keyBytes = factory.generateSecret(spec).encoded
+        val secretKey = SecretKeySpec(keyBytes, "AES")
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+        val decryptedBytes = cipher.doFinal(encryptedData)
+        val charBuffer = java.nio.charset.StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(decryptedBytes))
+        val finalResult = CharArray(charBuffer.remaining())
+        charBuffer.get(finalResult)
+        keyBytes.fill(0)
+        salt.fill(0)
+        iv.fill(0)
+        encryptedData.fill(0)
+        decryptedBytes.fill(0)
         return finalResult
     }
 }
