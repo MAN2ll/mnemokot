@@ -11,15 +11,13 @@ import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.database.domain.model.Account
 import ru.man2ll.mnemokot.core.database.domain.repository.MnemokotRepository
 import ru.man2ll.mnemokot.core.database.domain.session.SessionManager
-import ru.man2ll.mnemokot.core.security.crypto.SecurityCryptoEngine
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
 import javax.inject.Inject
 
 @HiltViewModel
 class VaultViewModel @Inject constructor(
     private val repository: MnemokotRepository,
-    private val sessionManager: SessionManager,
-    private val cryptoEngine: SecurityCryptoEngine
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
@@ -61,12 +59,10 @@ class VaultViewModel @Inject constructor(
         _vaultError.value = null
         
         viewModelScope.launch {
-            val staticSalt = "MnemoKot_Pin_Salt".toByteArray(Charsets.UTF_8)
-            val testHash = cryptoEngine.hashPin(pin, staticSalt)
-            pin.fill('\u0000')
-            staticSalt.fill(0)
+            // Делегируем проверку репозиторию - он сам достанет соль из БД
+            val isValid = repository.verifyPin(profileId, pin)
+            pin.fill('\u0000') // Крипто-гигиена: затираем PIN из памяти
 
-            val isValid = repository.verifyPin(profileId, testHash)
             if (isValid) {
                 onSuccessAction()
             } else {
