@@ -8,14 +8,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.man2ll.mnemokot.core.crypto.domain.generator.MnemonicPasswordGeneratorV2
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicPhrase
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
 import javax.inject.Inject
 
 data class MnemonicGeneratorUiState(
     val passwordLength: Int = 16,
     val useLeetSpeak: Boolean = true,
-    val translitMode: TranslitMode = TranslitMode.GOST_7_79_2000_B,
+    val mode: MnemonicMode = MnemonicMode.AMPG_V2_GOST,
     val calculatedPassword: CharArray? = null,
     val isHelpVisible: Boolean = false
 )
@@ -31,17 +31,12 @@ class MnemonicGeneratorViewModel @Inject constructor(
     private val inputPhraseBuffer = CharArray(256) { '\u0000' }
     private var phraseLength = 0
 
-    fun onPhraseCharAdded(char: Char) {
-        if (phraseLength < inputPhraseBuffer.size) {
-            inputPhraseBuffer[phraseLength] = char
-            phraseLength++
-        }
-    }
-
-    fun onPhraseBackspace() {
-        if (phraseLength > 0) {
-            phraseLength--
-            inputPhraseBuffer[phraseLength] = '\u0000'
+    // Единая точка синхронизации фразы: перезаписываем буфер целиком, без дублирования
+    fun setPhrase(text: String) {
+        inputPhraseBuffer.fill('\u0000')
+        phraseLength = text.length.coerceAtMost(inputPhraseBuffer.size)
+        for (i in 0 until phraseLength) {
+            inputPhraseBuffer[i] = text[i]
         }
     }
 
@@ -53,8 +48,8 @@ class MnemonicGeneratorViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(useLeetSpeak = enabled)
     }
 
-    fun onTranslitModeChanged(mode: TranslitMode) {
-        _uiState.value = _uiState.value.copy(translitMode = mode)
+    fun onModeChanged(mode: MnemonicMode) {
+        _uiState.value = _uiState.value.copy(mode = mode)
     }
 
     fun toggleHelpVisibility() {
@@ -66,18 +61,18 @@ class MnemonicGeneratorViewModel @Inject constructor(
             val cleanPhrase = CharArray(phraseLength) { inputPhraseBuffer[it] }
             val mnemonicPhrase = MnemonicPhrase(cleanPhrase)
             val staticSalt = "MnemoKot_Generation_Salt".toByteArray(Charsets.UTF_8)
-            
+
             val state = _uiState.value
             val result = passwordGenerator.generatePassword(
                 phrase = mnemonicPhrase,
                 salt = staticSalt,
                 length = state.passwordLength,
-                translitMode = state.translitMode,
+                mode = state.mode,
                 useLeetSpeak = state.useLeetSpeak
             )
 
             _uiState.value = state.copy(calculatedPassword = result.password.clone())
-            
+
             mnemonicPhrase.close()
             result.close()
             staticSalt.fill(0)
