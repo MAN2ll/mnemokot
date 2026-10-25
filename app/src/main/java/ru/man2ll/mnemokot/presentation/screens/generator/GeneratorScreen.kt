@@ -3,10 +3,13 @@ package ru.man2ll.mnemokot.presentation.screens.generator
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -15,9 +18,11 @@ import ru.man2ll.mnemokot.presentation.mnemonic.MnemonicGeneratorViewModel
 import ru.man2ll.mnemokot.presentation.random.RandomGeneratorDialog
 import ru.man2ll.mnemokot.presentation.random.RandomGeneratorViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratorScreen(
     modifier: Modifier = Modifier,
+    onNavigateBack: () -> Unit = {},
     mnemonicViewModel: MnemonicGeneratorViewModel = hiltViewModel(),
     randomViewModel: RandomGeneratorViewModel = hiltViewModel()
 ) {
@@ -28,6 +33,16 @@ fun GeneratorScreen(
     var showMnemonicDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Генератор паролей", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    }
+                }
+            )
+        },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
