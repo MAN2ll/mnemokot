@@ -46,6 +46,10 @@ class MasterAuthViewModel @Inject constructor(
     }
 
     fun onSetupMasterPassword(password: CharArray, enableBio: Boolean) {
+        if (password.isEmpty()) {
+            _errorMessage.value = "Пароль не может быть пустым"
+            return
+        }
         if (password.size < 6) {
             _errorMessage.value = "Мастер-пароль должен быть не менее 6 символов"
             return
@@ -59,6 +63,11 @@ class MasterAuthViewModel @Inject constructor(
     }
 
     fun onVerifyMasterPassword(password: CharArray, onResult: (Boolean) -> Unit) {
+        if (password.isEmpty()) {
+            _errorMessage.value = "Введите мастер-пароль"
+            onResult(false)
+            return
+        }
         _errorMessage.value = null
         viewModelScope.launch {
             val isValid = repository.verifyMasterPassword(password)
