@@ -23,6 +23,7 @@ import ru.man2ll.mnemokot.core.database.domain.model.Account
 @Composable
 fun VaultScreen(
     viewModel: VaultViewModel,
+    onNavigateToGenerator: () -> Unit,
     onNavigateToAudit: () -> Unit,
     onNavigateToBackup: () -> Unit
 ) {
@@ -44,13 +45,26 @@ fun VaultScreen(
             TopAppBar(
                 title = { Text("Сейф MnemoKot", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = onNavigateToAudit) { Icon(Icons.Default.Shield, contentDescription = "Аудит") }
-                    IconButton(onClick = onNavigateToBackup) { Icon(Icons.Default.Backup, contentDescription = "Бэкап") }
+                    IconButton(onClick = onNavigateToGenerator) { 
+                        Icon(Icons.Default.Key, contentDescription = "Генератор") 
+                    }
+                    IconButton(onClick = onNavigateToAudit) { 
+                        Icon(Icons.Default.Shield, contentDescription = "Аудит") 
+                    }
+                    IconButton(onClick = onNavigateToBackup) { 
+                        Icon(Icons.Default.Backup, contentDescription = "Бэкап") 
+                    }
                     if (isSelectionMode) {
-                        IconButton(onClick = { viewModel.runSelectedPasswordRotation() }) { Icon(Icons.Default.Shuffle, contentDescription = "Перемешать") }
-                        IconButton(onClick = { viewModel.cancelSelectionMode() }) { Icon(Icons.Default.Close, contentDescription = "Отмена") }
+                        IconButton(onClick = { viewModel.runSelectedPasswordRotation() }) { 
+                            Icon(Icons.Default.Shuffle, contentDescription = "Перемешать") 
+                        }
+                        IconButton(onClick = { viewModel.cancelSelectionMode() }) { 
+                            Icon(Icons.Default.Close, contentDescription = "Отмена") 
+                        }
                     } else {
-                        IconButton(onClick = { viewModel.startSelectionMode() }) { Icon(Icons.Default.Checklist, contentDescription = "Выбрать") }
+                        IconButton(onClick = { viewModel.startSelectionMode() }) { 
+                            Icon(Icons.Default.Checklist, contentDescription = "Выбрать") 
+                        }
                     }
                 }
             )
