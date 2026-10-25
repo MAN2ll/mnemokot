@@ -13,7 +13,9 @@ import ru.man2ll.mnemokot.ui.vault.VaultScreen
 import ru.man2ll.mnemokot.ui.vault.VaultViewModel
 import ru.man2ll.mnemokot.presentation.screens.generator.GeneratorScreen
 import ru.man2ll.mnemokot.ui.audit.AuditScreen
+import ru.man2ll.mnemokot.ui.audit.AuditViewModel
 import ru.man2ll.mnemokot.ui.backup.BackupScreen
+import ru.man2ll.mnemokot.ui.backup.BackupViewModel
 
 object Routes {
     const val MASTER_AUTH = "master_auth_route"
@@ -79,7 +81,9 @@ fun AppNavigation(navController: NavHostController) {
         }
 
         composable(Routes.AUDIT) {
+            val auditViewModel: AuditViewModel = hiltViewModel()
             AuditScreen(
+                viewModel = auditViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 }
@@ -87,7 +91,9 @@ fun AppNavigation(navController: NavHostController) {
         }
 
         composable(Routes.BACKUP) {
+            val backupViewModel: BackupViewModel = hiltViewModel()
             BackupScreen(
+                viewModel = backupViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 }
