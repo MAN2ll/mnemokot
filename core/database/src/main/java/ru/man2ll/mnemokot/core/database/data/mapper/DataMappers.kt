@@ -18,7 +18,7 @@ fun AccountEntity.toDomain(): Account {
         salt = salt,
         rotationDate = rotationDate,
         explicitPassword = encryptedPassword,
-        encryptedMnemonicPhrase = encryptedMnemonicPhrase, // ← МАППИНГ НОВОГО ПОЛЯ
+        encryptedMnemonicPhrase = encryptedMnemonicPhrase,
         isDualUserMode = isDualUserMode,
         createdAt = createdAt,
         expiresAt = expiresAt,
@@ -37,7 +37,7 @@ fun Account.toEntity(): AccountEntity {
         salt = salt,
         rotationDate = rotationDate,
         encryptedPassword = explicitPassword,
-        encryptedMnemonicPhrase = encryptedMnemonicPhrase, // ← МАППИНГ НОВОГО ПОЛЯ
+        encryptedMnemonicPhrase = encryptedMnemonicPhrase,
         isDualUserMode = isDualUserMode,
         createdAt = createdAt,
         expiresAt = expiresAt,
@@ -49,11 +49,9 @@ fun UserProfileEntity.toDomain(): UserProfile {
     return UserProfile(
         id = id,
         profileName = profileName,
-        pinHash = pinHash,
-        pinSalt = pinSalt,
+        hasPin = pinHash != null,
         failedAttempts = failedAttempts,
-        maxAttemptsBeforeDelete = maxAttemptsBeforeDelete,
-        createdAt = createdAt
+        maxAttemptsBeforeDelete = maxAttemptsBeforeDelete
     )
 }
 
