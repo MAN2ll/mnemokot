@@ -1,8 +1,9 @@
 package ru.man2ll.mnemokot.core.crypto.domain.model
 
-enum class TranslitMode {
-    GOST_7_79_2000_B,
-    NONE
+enum class MnemonicMode {
+    AMPG_V2_GOST,      // Транслит ГОСТ + усечение корней + Leet + достройка SHA-256 с солью
+    QWERTY_SHIFT,      // Сдвиг раскладки: кириллица -> латиница по физическим клавишам QWERTY
+    PURE_LEET_SPEAK    // Посимвольный Leet Speak с чередованием регистра
 }
 
 data class MnemonicPhrase(
