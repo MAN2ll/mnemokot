@@ -1,5 +1,6 @@
 package ru.man2ll.mnemokot.ui.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,11 +20,18 @@ import androidx.core.content.ContextCompat
 @Composable
 fun MasterAuthScreen(
     viewModel: MasterAuthViewModel,
-    onAccessGranted: () -> Unit
+    onAccessGranted: () -> Unit,
+    onExitApp: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
+
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        showExitDialog = true
+    }
 
     fun showBiometricPrompt() {
         val activity = context as? FragmentActivity ?: return
@@ -78,6 +86,29 @@ fun MasterAuthScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Выйти из приложения?") },
+            text = { Text("Приложение будет закрыто. Для повторного входа потребуется мастер-пароль.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        onExitApp()
+                    }
+                ) {
+                    Text("Выйти")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
 
@@ -152,6 +183,7 @@ fun MasterSetupView(onSave: (CharArray, Boolean) -> Unit, error: String?) {
                 passChars.fill('\u0000')
                 confirmChars.fill('\u0000')
             },
+            enabled = passLength >= 6,
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
         ) { 
@@ -192,6 +224,7 @@ fun MasterLoginView(isBioAvailable: Boolean, onVerify: (CharArray) -> Unit, onBi
                 onVerify(finalVerifyChars)
                 finalVerifyChars.fill('\u0000')
             },
+            enabled = loginLength > 0,
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
