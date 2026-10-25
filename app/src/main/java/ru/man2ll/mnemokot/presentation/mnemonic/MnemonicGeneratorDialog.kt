@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ru.man2ll.mnemokot.core.crypto.domain.model.TranslitMode
+import ru.man2ll.mnemokot.core.crypto.domain.model.MnemonicMode
 
 @Composable
 fun MnemonicGeneratorDialog(
@@ -61,7 +61,7 @@ fun MnemonicGeneratorDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "🐈 Комбайн Мнемотехник",
+                        text = "🐈 Арсенал Мнемотехник",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -73,26 +73,27 @@ fun MnemonicGeneratorDialog(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val modes = listOf(
-                    TranslitMode.GOST_7_79_2000_B to "AMPG v2 (ГОСТ)",
-                    TranslitMode.NONE to "Без транслитерации"
+                    MnemonicMode.AMPG_V2_GOST to "AMPG v2",
+                    MnemonicMode.QWERTY_SHIFT to "QWERTY",
+                    MnemonicMode.PURE_LEET_SPEAK to "Leet"
                 )
-                val selectedIndex = modes.indexOfFirst { it.first == uiState.translitMode }
+                val selectedIndex = modes.indexOfFirst { it.first == uiState.mode }
 
                 TabRow(selectedTabIndex = selectedIndex) {
                     modes.forEachIndexed { index, pair ->
                         Tab(
                             selected = selectedIndex == index,
-                            onClick = { viewModel.onTranslitModeChanged(pair.first) },
-                            text = { 
+                            onClick = { viewModel.onModeChanged(pair.first) },
+                            text = {
                                 Text(
-                                    text = pair.second, 
-                                    fontWeight = FontWeight.SemiBold, 
+                                    text = pair.second,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp
-                                ) 
+                                )
                             }
                         )
                     }
@@ -103,6 +104,14 @@ fun MnemonicGeneratorDialog(
                     enter = expandVertically(animationSpec = tween(300)),
                     exit = shrinkVertically(animationSpec = tween(300))
                 ) {
+                    val helpText = when (uiState.mode) {
+                        MnemonicMode.AMPG_V2_GOST ->
+                            "AMPG v2: транслитерация кириллицы по ГОСТ, усечение корней слов, Leet-мутация и достройка пароля псевдослучайными символами из SHA-256 с солью."
+                        MnemonicMode.QWERTY_SHIFT ->
+                            "QWERTY-сдвиг: каждый символ фразы заменяется на символ той же клавиши в английской раскладке. «Кот» -> «Rjn»."
+                        MnemonicMode.PURE_LEET_SPEAK ->
+                            "Leet Speak: посимвольная замена букв на визуально похожие цифры и спецсимволы с чередованием регистра."
+                    }
                     Box(
                         modifier = Modifier
                             .padding(top = 8.dp)
@@ -112,7 +121,7 @@ fun MnemonicGeneratorDialog(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "AMPG v2: Переводит кириллицу в транслит ГОСТ, усекает корни слов для сохранения запоминаемой структуры и мутирует повторяющиеся символы по Leet-карте.",
+                            text = helpText,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -120,7 +129,7 @@ fun MnemonicGeneratorDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 val phraseBuffer = remember { CharArray(256) { '\u0000' } }
                 var phraseLength by remember { mutableStateOf(0) }
 
@@ -128,11 +137,9 @@ fun MnemonicGeneratorDialog(
                     value = String(phraseBuffer, 0, phraseLength),
                     onValueChange = { input ->
                         phraseLength = input.length.coerceAtMost(256)
+                        for (i in 0 until phraseLength) phraseBuffer[i] = input[i]
+                        viewModel.setPhrase(input)
                         viewModel.clearGeneratedPassword()
-                        for (i in 0 until phraseLength) {
-                            phraseBuffer[i] = input[i]
-                            viewModel.onPhraseCharAdded(input[i])
-                        }
                     },
                     label = { Text("Мнемоническая фраза") },
                     placeholder = { Text("Введите текст для трансформации...") },
@@ -145,11 +152,15 @@ fun MnemonicGeneratorDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Мутация повторов (Leet)", style = MaterialTheme.typography.bodyMedium)
-                        Text("Подстановка спецсимволов вместо удаления дубликатов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Подстановка спецсимволов вместо удаления дубликатов",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Switch(checked = uiState.useLeetSpeak, onCheckedChange = { viewModel.onLeetSpeakToggled(it) })
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = "Целевая длина пароля", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -177,10 +188,10 @@ fun MnemonicGeneratorDialog(
                     shape = RoundedCornerShape(12.dp),
                     trailingIcon = {
                         IconButton(
-                            onClick = { 
-                                uiState.calculatedPassword?.let { 
-                                    clipboardManager.setText(AnnotatedString(String(it))) 
-                                } 
+                            onClick = {
+                                uiState.calculatedPassword?.let {
+                                    clipboardManager.setText(AnnotatedString(String(it)))
+                                }
                             }
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = "Копировать")
@@ -196,7 +207,8 @@ fun MnemonicGeneratorDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = {
                         phraseBuffer.fill('\u0000')
@@ -209,17 +221,17 @@ fun MnemonicGeneratorDialog(
                         Text("Рассчитать")
                     }
                     Button(
-                    onClick = {
-                    uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
-                    phraseBuffer.fill('\u0000')
-                    onDismissRequest()
-                    },
-                    enabled = uiState.calculatedPassword != null
+                        onClick = {
+                            uiState.calculatedPassword?.let { onPasswordApplied(it.clone()) }
+                            phraseBuffer.fill('\u0000')
+                            onDismissRequest()
+                        },
+                        enabled = uiState.calculatedPassword != null
                     ) {
-                    Text("Утвердить")
-}
-}
-}
-}
-}
+                        Text("Утвердить")
+                    }
+                }
+            }
+        }
+    }
 }
